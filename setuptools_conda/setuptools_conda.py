@@ -197,6 +197,7 @@ class conda_dist(Command):
         if not os.getenv('CONDA_PREFIX'):
             raise RuntimeError("Must activate a conda environment to run conda_dist")
         from conda_build.config import Config
+
         config = Config()
         self.host_platform = config.host_subdir
 
@@ -207,7 +208,6 @@ class conda_dist(Command):
         self.HOME = self.distribution.get_url()
         self.LICENSE = self.distribution.get_license()
         self.SUMMARY = self.distribution.get_description()
-
 
         self.license_file = None
         for filename in os.listdir('.'):
@@ -272,7 +272,6 @@ class conda_dist(Command):
             self.RUN_REQUIRES = condify_requirements(
                 self.install_requires, {}, self.conda_name_differences
             )
-        
 
     def run(self):
         from conda_build.convert import retrieve_python_version
@@ -283,9 +282,7 @@ class conda_dist(Command):
         os.makedirs(self.BUILD_DIR)
         template = Template(open(CONDA_BUILD_TEMPLATE).read())
         with open(build_config_yaml, 'w') as f:
-            f.write(
-                template.substitute(PYTHONS='\n  - '.join(self.pythons))
-            )
+            f.write(template.substitute(PYTHONS='\n  - '.join(self.pythons)))
         template = Template(open(META_YAML_TEMPLATE).read())
         if self.license_file is not None:
             license_file_line = "license_file: ../%s" % self.license_file
@@ -307,12 +304,9 @@ class conda_dist(Command):
         check_call(['conda-build', self.RECIPE_DIR, '--output-folder', self.BUILD_DIR])
 
         repodir = os.path.join(self.BUILD_DIR, self.host_platform)
-        with open(
-            os.path.join(repodir, 'repodata.json')
-        ) as f:
+        with open(os.path.join(repodir, 'repodata.json')) as f:
             pkgs = [os.path.join(repodir, pkg) for pkg in json.load(f)["packages"]]
 
-        
         # Copy/Convert all the packages
         converted_dir = os.path.join(self.BUILD_DIR, 'converted')
         os.mkdir(converted_dir)
@@ -343,7 +337,7 @@ class conda_dist(Command):
                 )
                 print(
                     "Adding platform-specific requirements to %s"
-                    % os.path.basename(pkg)
+                    % os.path.join(os.path.sep.join(pkg.split(os.path.sep)[-2:]))
                 )
                 add_requirements(pkg, requirements)
 
