@@ -28,6 +28,10 @@ setup(
         'conda_dist': {
             'pythons': (__file__, ['2.7', '3.5', '3.6', '3.7', '3.8']),
             'platforms': (__file__, 'all'),
+            'install_requires': (
+                __file__,
+                INSTALL_REQUIRES + ['conda-build', 'conda-verify'],
+            ),
         },
     },
 )
