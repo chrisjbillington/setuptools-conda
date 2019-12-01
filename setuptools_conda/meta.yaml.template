@@ -1,0 +1,24 @@
+package:
+  name: ${NAME}
+  version: ${VERSION}
+
+source:
+  path: ../ 
+
+build:
+  number: ${BUILD_NUMBER}
+  script: python setup.py install
+  
+requirements:
+  build:
+    - python
+    - ${BUILD_REQUIRES}
+
+  run:
+    - python
+
+about:
+  home: ${HOME}
+  license: ${LICENSE}
+  ${LICENSE_FILE_LINE}
+  summary: ${SUMMARY}

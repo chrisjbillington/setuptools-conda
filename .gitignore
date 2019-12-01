@@ -1,0 +1,7 @@
+conda_build/*
+build/*
+conda_dist/*
+dist/*
+__pycache__
+*.egg-info
+*.eggs
