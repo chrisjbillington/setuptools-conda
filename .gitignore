@@ -1,6 +1,6 @@
 conda_build/*
 build/*
-conda_dist/*
+dist_conda/*
 dist/*
 __pycache__
 *.egg-info
