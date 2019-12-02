@@ -99,7 +99,7 @@ def pkgbasename(name, version, py, build_number):
     return '%s-%s-py%s_%d.tar.bz2' % (name, version, py.replace('.', ''), build_number)
 
 
-class conda_dist(Command):
+class bdist_conda(Command):
     description = "Make conda packages"
     user_options = [
         (
@@ -191,11 +191,11 @@ class conda_dist(Command):
 
     RECIPE_DIR = 'conda_build'
     BUILD_DIR = os.path.join(RECIPE_DIR, 'build')
-    DIST_DIR = 'conda_dist'
+    DIST_DIR = 'conda_packages'
 
     def initialize_options(self):
         if not os.getenv('CONDA_PREFIX'):
-            raise RuntimeError("Must activate a conda environment to run conda_dist")
+            raise RuntimeError("Must activate a conda environment to run bdist_conda")
         from conda_build.config import Config
 
         config = Config()
