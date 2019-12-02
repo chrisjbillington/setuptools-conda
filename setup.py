@@ -3,7 +3,7 @@ import os
 
 from setuptools_conda import dist_conda
 
-VERSION = '0.2.0'
+VERSION = '0.2.1.dev1'
 
 # Auto generate a __version__ package for the package to import
 with open(os.path.join('setuptools_conda', '__version__.py'), 'w') as f:
@@ -32,8 +32,8 @@ setup(
     cmdclass={'dist_conda': dist_conda},
     command_options={
         'dist_conda': {
-            'pythons': (__file__, ['2.7', '3.5', '3.6', '3.7', '3.8']),
-            'platforms': (__file__, 'all'),
+            'pythons': (__file__, ['3.6', '3.7', '3.8']),
+            'platforms': (__file__, ['linux-64', 'win-32', 'win-64', 'osx-64']),
             'install_requires': (
                 __file__,
                 INSTALL_REQUIRES + ['conda-build', 'conda-verify'],

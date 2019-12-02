@@ -8,6 +8,7 @@ source:
 
 build:
   number: ${BUILD_NUMBER}
+  ${BUILD_STRING_LINE}
   script: python setup.py install
   
 requirements:

@@ -148,6 +148,7 @@ class dist_conda(Command):
                 license file even if one of the above is present."""
             ),
         ),
+        ('build-string=', 's', "Conda build string."),
         (
             'setup-requires=',
             None,
@@ -225,6 +226,7 @@ class dist_conda(Command):
         self.build_number = 0
         self.force_conversion = False
         self.conda_name_differences = {}
+        self.build_string = None
 
     def finalize_options(self):
         if self.license_file is None:
@@ -308,6 +310,10 @@ class dist_conda(Command):
             license_file_line = "license_file: ../%s" % self.license_file
         else:
             license_file_line = ''
+        if self.build_string is not None:
+            build_string_line = "string: %s" % self.build_string
+        else:
+            build_string_line = ''
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write(
                 template.substitute(
@@ -316,6 +322,7 @@ class dist_conda(Command):
                     TARBALL=tarball,
                     SHA256=sha256,
                     BUILD_NUMBER=self.build_number,
+                    BUILD_STRING_LINE=build_string_line,
                     BUILD_REQUIRES='\n    - '.join(self.BUILD_REQUIRES),
                     HOME=self.HOME,
                     LICENSE=self.LICENSE,
