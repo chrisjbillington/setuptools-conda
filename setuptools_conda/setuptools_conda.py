@@ -6,6 +6,7 @@ from string import Template
 from setuptools import Command
 import json
 from textwrap import dedent
+import hashlib
 
 PLATFORMS = ['win-32', 'win-64', 'linux-32', 'linux-64', 'osx-64']
 PLATFORM_QUALIFIERS = ['win32', 'win64', 'linux32', 'linux64', 'osx']
@@ -189,9 +190,10 @@ class dist_conda(Command):
         ),
     ]
 
-    RECIPE_DIR = 'conda_build'
-    BUILD_DIR = os.path.join(RECIPE_DIR, 'build')
-    DIST_DIR = 'dist_conda'
+    BUILD_DIR = 'conda_build'
+    RECIPE_DIR = os.path.join(BUILD_DIR, 'recipe')
+    CONDA_BLD_PATH = os.path.join(BUILD_DIR, 'conda-bld')
+    DIST_DIR = 'conda_packages'
 
     def initialize_options(self):
         if not os.getenv('CONDA_PREFIX'):
@@ -276,15 +278,33 @@ class dist_conda(Command):
     def run(self):
         from conda_build.convert import retrieve_python_version
 
+        # Clean
+        shutil.rmtree(self.BUILD_DIR, ignore_errors=True)
+        os.makedirs(self.RECIPE_DIR)
+
+        # Run sdist to make a source tarball in the recipe dir:
+        check_call(
+            [
+                sys.executable,
+                'setup.py',
+                'sdist',
+                '--dist-dir=' + self.BUILD_DIR,
+                '--formats=gztar',
+            ]
+        )
+
+        tarball = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+        with open(os.path.join(self.BUILD_DIR, tarball), 'rb') as f:
+            sha256 = hashlib.sha256(f.read()).hexdigest()
+
         # Build:
         build_config_yaml = os.path.join(self.RECIPE_DIR, 'conda_build_config.yaml')
-        shutil.rmtree(self.RECIPE_DIR, ignore_errors=True)
-        os.makedirs(self.BUILD_DIR)
         template = Template(open(CONDA_BUILD_TEMPLATE).read())
         with open(build_config_yaml, 'w') as f:
             f.write(template.substitute(PYTHONS='\n  - '.join(self.pythons)))
         template = Template(open(META_YAML_TEMPLATE).read())
         if self.license_file is not None:
+            shutil.copy(self.license_file, self.BUILD_DIR)
             license_file_line = "license_file: ../%s" % self.license_file
         else:
             license_file_line = ''
@@ -293,6 +313,8 @@ class dist_conda(Command):
                 template.substitute(
                     NAME=self.NAME,
                     VERSION=self.VERSION,
+                    TARBALL=tarball,
+                    SHA256=sha256,
                     BUILD_NUMBER=self.build_number,
                     BUILD_REQUIRES='\n    - '.join(self.BUILD_REQUIRES),
                     HOME=self.HOME,
@@ -301,9 +323,13 @@ class dist_conda(Command):
                     SUMMARY=self.SUMMARY,
                 )
             )
-        check_call(['conda-build', self.RECIPE_DIR, '--output-folder', self.BUILD_DIR])
+        environ = os.environ.copy()
+        environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
+        check_call(
+            ['conda-build', self.RECIPE_DIR], env=environ,
+        )
 
-        repodir = os.path.join(self.BUILD_DIR, self.host_platform)
+        repodir = os.path.join(self.CONDA_BLD_PATH, self.host_platform)
         with open(os.path.join(repodir, 'repodata.json')) as f:
             pkgs = [os.path.join(repodir, pkg) for pkg in json.load(f)["packages"]]
 

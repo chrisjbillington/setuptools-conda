@@ -1,7 +1,8 @@
 conda_build/*
 build/*
-dist_conda/*
+conda_packages/*
 dist/*
 __pycache__
 *.egg-info
 *.eggs
+setuptools_conda/__version__.py

@@ -3,7 +3,8 @@ package:
   version: ${VERSION}
 
 source:
-  path: ../ 
+  url: ../${TARBALL}
+  sha256: ${SHA256}
 
 build:
   number: ${BUILD_NUMBER}
