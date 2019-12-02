@@ -1,3 +1,6 @@
 from .setuptools_conda import bdist_conda
 
-__version__ = '0.1.0'
+try:
+    from __version__ import __version__
+except ImportError:
+    __version__ = None

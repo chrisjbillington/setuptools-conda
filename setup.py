@@ -1,7 +1,13 @@
 from setuptools import setup
 import os
 
-from setuptools_conda import bdist_conda, __version__
+from setuptools_conda import bdist_conda
+
+VERSION = '0.2.0'
+
+# Auto generate a __version__ package for the package to import
+with open(os.path.join('setuptools_conda', '__version__.py'), 'w') as f:
+    f.write("__version__ = '%s'\n" % VERSION)
 
 PYTHON_REQUIRES = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 SETUP_REQUIRES = ['setuptools', 'setuptools_scm']
@@ -9,7 +15,7 @@ INSTALL_REQUIRES = ["setuptools"]
 
 setup(
     name='setuptools_conda',
-    version=__version__,
+    version=VERSION,
     description="Add a bdist_conda command to your setup.py",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
