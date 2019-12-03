@@ -1,21 +1,14 @@
 from setuptools import setup
 import os
+from runpy import run_path
 
 from setuptools_conda import dist_conda
 
-VERSION = '0.2.1.dev1'
-
-# Auto generate a __version__ package for the package to import
-with open(os.path.join('setuptools_conda', '__version__.py'), 'w') as f:
-    f.write("__version__ = '%s'\n" % VERSION)
-
-PYTHON_REQUIRES = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-SETUP_REQUIRES = ['setuptools', 'setuptools_scm']
 INSTALL_REQUIRES = ["setuptools"]
 
 setup(
     name='setuptools_conda',
-    version=VERSION,
+    version=run_path(os.path.join('setuptools_conda', '__version__.py'))['__version__'],
     description="Add a dist_conda command to your setup.py",
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -25,10 +18,10 @@ setup(
     license="BSD",
     packages=['setuptools_conda'],
     zip_safe=False,
-    setup_requires=SETUP_REQUIRES,
+    setup_requires=['setuptools', 'setuptools_scm'],
     install_requires=[] if 'CONDA_BUILD' in os.environ else INSTALL_REQUIRES,
     include_package_data=True,
-    python_requires=PYTHON_REQUIRES,
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*",
     cmdclass={'dist_conda': dist_conda},
     command_options={
         'dist_conda': {

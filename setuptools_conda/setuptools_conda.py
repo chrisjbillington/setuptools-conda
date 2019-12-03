@@ -1,7 +1,7 @@
 import sys
 import os
 import shutil
-from subprocess import check_call
+from subprocess import check_call, Popen, PIPE
 from string import Template
 from setuptools import Command
 import json
@@ -96,8 +96,23 @@ def add_requirements(pkgfile, requirements):
     shutil.rmtree(temp_dir)
 
 
-def pkgbasename(name, version, py, build_number):
-    return '%s-%s-py%s_%d.tar.bz2' % (name, version, py.replace('.', ''), build_number)
+class NotARepo(OSError):
+    pass
+
+
+def git_call(cmd):
+    """Calls a command, raising NotARepo if there is no git repo there."""
+    try:
+        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = proc.communicate()
+    except OSError:
+        # Git not installed, or repo path doesn't exist or isn't a directory.
+        raise NotARepo(1, cmd, "Couldn't run git command - path might not exist")
+    if proc.returncode:
+        # Something went wrong - repo got deleted while we were reading it, or something
+        # like that.
+        raise NotARepo(proc.returncode, cmd, output=(stdout + stderr))
+    return stdout.decode('utf8')
 
 
 class dist_conda(Command):
@@ -189,6 +204,20 @@ class dist_conda(Command):
                 the mapping when they differ."""
             ),
         ),
+        (
+            'no-dev-buildstring',
+            None,
+            dedent(
+                """\
+                Disable the following behavuour: If no build string is given and the
+                package version contains the string 'dev', and the current working
+                directory is a git repository (and the git executable can be found),
+                then setuptools_conda will set the build string to
+                'pyXY_<branchname>_<shorthash>_<buildnumber>'. ANy hyphens in the branch
+                name are replaced by underscores. This is useful to create
+                uniquely-named builds for testing unmerged pull requests, etc."""
+            ),
+        ),
     ]
 
     BUILD_DIR = 'conda_build'
@@ -227,6 +256,7 @@ class dist_conda(Command):
         self.force_conversion = False
         self.conda_name_differences = {}
         self.build_string = None
+        self.no_dev_buildstring = False
 
     def finalize_options(self):
         if self.license_file is None:
@@ -276,6 +306,27 @@ class dist_conda(Command):
             self.RUN_REQUIRES = condify_requirements(
                 self.install_requires, {}, self.conda_name_differences
             )
+
+
+        if (
+            'dev' in self.VERSION
+            and self.build_string is None
+            and not self.no_dev_buildstring
+        ):
+            try:
+                branch = git_call(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).strip()
+                hash = git_call(['git', 'rev-parse', '--short', 'HEAD']).strip()
+                self.build_string = '_'.join(
+                    [
+                        "py{{ CONDA_PY }}",
+                        branch.replace('-', '_'),
+                        hash,
+                        str(self.build_number),
+                    ]
+                )
+            except NotARepo:
+                pass
+
 
     def run(self):
         from conda_build.convert import retrieve_python_version
