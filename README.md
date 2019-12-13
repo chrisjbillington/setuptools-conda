@@ -40,18 +40,10 @@ example is the `setup.py` of the [zprocess
 project](https://github.com/chrisjbillington/zprocess/), which actually has non-trivial
 dependencies.
 
-```$ python setup.py dist_conda -h
-Common commands: (see '--help-commands' for more)
+```
+$ python setup.py dist_conda -h
 
-  setup.py build      will build the package underneath 'build/'
-  setup.py install    will install the package
-
-Global options:
-  --verbose (-v)  run verbosely (default)
-  --quiet (-q)    run quietly (turns verbosity off)
-  --dry-run (-n)  don't actually do anything
-  --help (-h)     show detailed help message
-  --no-user-cfg   ignore pydistutils.cfg in your home directory
+<snip>
 
 Options for 'dist_conda' command:
   --pythons                 Minor Python versions to build for, as a comma-
