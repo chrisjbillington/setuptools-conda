@@ -102,10 +102,17 @@ Options for 'dist_conda' command:
                             directory is a git repository (and the git
                             executable can be found), then setuptools_conda
                             will set the build string to
-                            'pyXY_<branchname>_<shorthash>_<buildnumber>'. ANy
+                            'pyXY_<branchname>_<shorthash>_<buildnumber>'. Any
                             hyphens in the branch name are replaced by
                             underscores. This is useful to create uniquely-
                             named builds for testing unmerged pull requests,
                             etc.
+  --link-scripts            Comma-separated list of link scripts to include,
+                            such as post-link.sh, pre-unlink.bat etc. These
+                            will be placed in the recipe directory before
+                            building. If passed to `setup()` via
+                            `command_options`, this shound instead be a
+                            dictionary mapping link script filenames to their
+                            contents.
 ```
 

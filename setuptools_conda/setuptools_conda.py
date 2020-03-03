@@ -213,9 +213,21 @@ class dist_conda(Command):
                 package version contains the string 'dev', and the current working
                 directory is a git repository (and the git executable can be found),
                 then setuptools_conda will set the build string to
-                'pyXY_<branchname>_<shorthash>_<buildnumber>'. ANy hyphens in the branch
+                'pyXY_<branchname>_<shorthash>_<buildnumber>'. Any hyphens in the branch
                 name are replaced by underscores. This is useful to create
                 uniquely-named builds for testing unmerged pull requests, etc."""
+            ),
+        ),
+        (
+            'link-scripts=',
+            None,
+            dedent(
+                """\
+                Comma-separated list of link scripts to include, such as post-link.sh,
+                pre-unlink.bat etc. These will be placed in the recipe directory before
+                building. If passed to `setup()` via `command_options`, this shound
+                instead be a dictionary mapping link script filenames to their
+                contents."""
             ),
         ),
     ]
@@ -257,6 +269,7 @@ class dist_conda(Command):
         self.conda_name_differences = {}
         self.build_string = None
         self.no_dev_buildstring = False
+        self.link_scripts = {}
 
     def finalize_options(self):
         if self.license_file is None:
@@ -327,6 +340,13 @@ class dist_conda(Command):
             except NotARepo:
                 pass
 
+        if isinstance(self.link_scripts, str):
+            link_scripts = {}
+            for name in self.link_scripts.split(','):
+                with open(name) as f:
+                    link_scripts[os.path.basename(name)] = f.read()
+            self.link_scripts = link_scripts
+
 
     def run(self):
         from conda_build.convert import retrieve_python_version
@@ -381,6 +401,12 @@ class dist_conda(Command):
                     SUMMARY=self.SUMMARY,
                 )
             )
+
+        # Link scripts:
+        for name, contents in self.link_scripts.items():
+            with open(os.path.join(self.RECIPE_DIR, name), 'w') as f:
+                f.write(contents)
+
         environ = os.environ.copy()
         environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
         check_call(
