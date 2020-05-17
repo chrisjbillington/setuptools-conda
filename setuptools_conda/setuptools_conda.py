@@ -17,6 +17,12 @@ CONDA_BUILD_TEMPLATE = os.path.join(_here, 'conda_build_config.yaml.template')
 META_YAML_TEMPLATE = os.path.join(_here, 'meta.yaml.template')
 
 
+def _split(s, delimiter=','):
+    """Split a string on given delimiter or newlines and return the results stripped of
+    whitespace"""
+    return [item.strip() for item in s.replace(delimiter, '\n').splitlines()]
+
+
 def condify_requirements(requires, extras_require, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
     and `setuptools.Distribution.extras_require` to the format required by conda"""
@@ -280,11 +286,11 @@ class dist_conda(Command):
             self.platforms = PLATFORMS
         else:
             if isinstance(self.platforms, str):
-                self.platforms = self.platforms.split(',')
+                self.platforms = _split(self.platforms)
             if not all(p in PLATFORMS for p in self.platforms):
                 raise ValueError("Invalid platform list %s" % str(self.platforms))
         if isinstance(self.pythons, str):
-            self.pythons = self.pythons.split(',')
+            self.pythons = _split(self.pythons)
         self.build_number = int(self.build_number)
         if self.license_file == 'None':
             self.license_file = None
@@ -293,7 +299,7 @@ class dist_conda(Command):
 
         if isinstance(self.conda_name_differences, str):
             self.conda_name_differences = dict(
-                item.split(':') for item in self.conda_name_differences.split(',')
+                _split(item, ':') for item in _split(self.conda_name_differences)
             )
 
         if self.setup_requires is None:
@@ -302,7 +308,7 @@ class dist_conda(Command):
             )
         else:
             if isinstance(self.setup_requires, str):
-                self.setup_requires = self.setup_requires.split(',')
+                self.setup_requires = _split(self.setup_requires)
             self.BUILD_REQUIRES = condify_requirements(
                 self.setup_requires, {}, self.conda_name_differences
             )
@@ -315,7 +321,7 @@ class dist_conda(Command):
             )
         else:
             if isinstance(self.install_requires, str):
-                self.install_requires = self.install_requires.split(',')
+                self.install_requires = _split(self.install_requires)
             self.RUN_REQUIRES = condify_requirements(
                 self.install_requires, {}, self.conda_name_differences
             )
@@ -342,7 +348,7 @@ class dist_conda(Command):
 
         if isinstance(self.link_scripts, str):
             link_scripts = {}
-            for name in self.link_scripts.split(','):
+            for name in _split(self.link_scripts):
                 with open(name) as f:
                     link_scripts[os.path.basename(name)] = f.read()
             self.link_scripts = link_scripts
