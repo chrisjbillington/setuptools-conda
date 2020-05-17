@@ -70,7 +70,7 @@ def condify_requirements(requires, extras_require, name_replacements):
                 line = line.replace(f'{platform_var}=={value}', conda_bool)
                 line = line.replace(f'{platform_var}!={value}', 'not ' + conda_bool)
         result.append(line)
-        
+
     return result
 
 
@@ -268,8 +268,7 @@ class dist_conda(Command):
             f.write(template.substitute(PYTHONS='\n  - '.join(self.pythons)))
         template = Template(open(META_YAML_TEMPLATE).read())
         if self.license_file is not None:
-            shutil.copy(self.license_file, self.BUILD_DIR)
-            license_file_line = "license_file: ../%s" % self.license_file
+            license_file_line = "license_file: %s" % self.license_file
         else:
             license_file_line = ''
         if self.build_string is not None:
