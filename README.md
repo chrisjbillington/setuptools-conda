@@ -8,8 +8,7 @@ Add a `dist_conda` command to your `setup.py`, allowing you to generate conda pa
 with `python setup.py dist_conda`, with as much information as possible determined
 automatically. More powerful than `conda-build`'s `bdist_conda` - this package can build
 for multiple Pythons, allows you to specify any package names that differ between conda
-and PyPI, runs `conda-convert` to convert packages for multiple platforms. It supports
-python-version-specific and platform-specific requirements such as 
+and PyPI, and converts a wider range of environment markers in dependencies such as:
 
 ```
 INSTALL_REQUIRES = [
@@ -22,23 +21,71 @@ INSTALL_REQUIRES = [
 ]
 ```
 
-and will create converted packages for each platform and Python version with the correct
-dependencies after evaluating the selector expressions for each package.
-
 To install:
-
-    pip install setuptools_conda
-
-or
 
     conda install -c cbillington setuptools_conda
 
-Docs coming soon - for now see the `setup.py` of this project for an example, and below
-is the output of `python setup.py dist_conda -h` listing available options that may be
-passed on the command line or via `command_options` in `setup()`. A more complete
-example is the `setup.py` of the [zprocess
-project](https://github.com/chrisjbillington/zprocess/), which actually has non-trivial
-dependencies.
+or if you want to install with pip for some reason (though this package is not useful
+outside a conda environment):
+    
+     pip install setuptools_conda
+    
+To build a conda package of your project, add the following to your setup.py:
+
+```python
+try:
+    from setuptools_conda import dist_conda
+    cmdclass = {'dist_conda': dist_conda}
+except ImportError:
+    cmdclass = {}
+
+setup(
+    use_scm_version=True,
+    cmdclass=cmdclass,
+```
+
+The `try: except:` will allow your setup.py to still function normally outside of a conda
+environment when `setuptools_conda` is not installed.
+
+If `setuptools_conda` is installed, then you may build a conda package by running:
+```bash
+$ python setup.py dist_conda
+```
+
+The resulting conda package will be in `conda_packages/<architecture>/` and can be
+installed with `conda install conda_packages/<architecture>/<pkgfile>` or uploaded to
+your account on anaconda.org with:
+```
+anaconda upload conda_packages/<architecture>/<pkgfile>
+```
+
+You may customise `dist_conda` to build for multiple Python versions at once, or many
+other options - see the full list of optiond below. Options may be passed in on the
+command line, or in a `setup.cfg` file in the `[dist_conda]` section:
+
+```ini
+[dist_conda]
+pythons = 3.6, 3.7
+noarch = True
+```
+
+They can also be set if you need to with the command_options argument in `setup.py`:
+
+```python
+setup(
+      ...
+      command_options = (
+          {
+              'dist_conda': {
+                  'pythons': (__file__, '3.6, 3.7'),
+                  'noarch': (__file__, True),
+              }
+          },
+      )
+      ...
+      )
+```
+
 
 ```
 $ python setup.py dist_conda -h
