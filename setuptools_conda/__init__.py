@@ -10,7 +10,7 @@ except ImportError:
 
 try:
     __version__ = setuptools_scm.get_version(Path(__file__).parent.parent)
-except LookupError:
+except (LookupError, FileNotFoundError):
     try:
         __version__ = importlib_metadata.version(__name__)
     except importlib_metadata.PackageNotFoundError:
