@@ -2,7 +2,6 @@ import sys
 import os
 import shutil
 from subprocess import check_call
-from string import Template
 from setuptools import Command
 import json
 from textwrap import dedent
@@ -334,7 +333,12 @@ class dist_conda(Command):
         environ = os.environ.copy()
         environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
         check_call(
-            ['conda-build', self.RECIPE_DIR], env=environ,
+            [
+                'conda-build',
+                '--no-test',
+                self.RECIPE_DIR,
+            ],
+            env=environ,
         )
 
         if self.noarch:
