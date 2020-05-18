@@ -54,7 +54,7 @@ $ python setup.py dist_conda
 
 The resulting conda package will be in `conda_packages/<architecture>/` and can be
 installed with `conda install conda_packages/<architecture>/<pkgfile>` or uploaded to
-your account on anaconda.org with:
+your account on anaconda.org with (you'll need to install `anaconda-client`):
 ```
 anaconda upload conda_packages/<architecture>/<pkgfile>
 ```
