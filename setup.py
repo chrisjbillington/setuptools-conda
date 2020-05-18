@@ -21,7 +21,6 @@ setup(
     url='http://github.com/chrisjbillington/setuptools_conda',
     license="BSD",
     packages=['setuptools_conda'],
-    zip_safe=False,
     setup_requires=SETUP_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     include_package_data=True,

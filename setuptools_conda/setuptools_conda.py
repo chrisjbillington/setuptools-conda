@@ -23,6 +23,30 @@ CONDA_BUILD_TEMPLATE = os.path.join(_here, 'conda_build_config.yaml.template')
 META_YAML_TEMPLATE = os.path.join(_here, 'meta.yaml.template')
 
 
+# Couldn't figure out how to use PyYAML
+def yaml_lines(obj, indent=2):
+    lines = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(value, (dict, list, tuple)):
+                lines.append(f'{key}:')
+                for line in yaml_lines(value):
+                    lines.append((' ' * indent + line).rstrip())
+                if lines and lines[-1]:
+                    lines.append('')
+            else:
+                lines.append(f'{key}: {value}')
+    elif isinstance(obj, (list, tuple)):
+        for item in obj:
+            for line in yaml_lines(item):
+                lines.append(line.rstrip())
+        if lines and lines[-1]:
+            lines.append('')
+    else:
+        lines.append(f'- {obj}') 
+    return lines
+
+
 def _split(s, delimiter=','):
     """Split a string on given delimiter or newlines and return the results stripped of
     whitespace"""
@@ -44,6 +68,8 @@ def condify_requirements(requires, extras_require, name_replacements):
         parts = line.split(';', 1)
         for pypiname, condaname in name_replacements.items():
             parts[0] = parts[0].replace(pypiname, condaname)
+        # Lower-case the package name:
+        parts[0] = parts[0].lower()
         line = ';'.join(parts)
         # Put any platform/version selector into conda format:
         if ';' in line:
@@ -138,7 +164,8 @@ class dist_conda(Command):
                 'PyQt5:pyqt,beautifulsoup4:beautiful-soup'. Also accepts a dict if
                 passed into `setup()` via `command_options`. Conda packages usually
                 share a name with their PyPI equivalents, but use this option to specify
-                the mapping when they differ."""
+                the mapping when they differ. If the only difference is case, no entry 
+                is needed - names will automatically be converted to lower case."""
             ),
         ),
         (
@@ -159,6 +186,11 @@ class dist_conda(Command):
     RECIPE_DIR = os.path.join(BUILD_DIR, 'recipe')
     CONDA_BLD_PATH = os.path.join(BUILD_DIR, 'conda-bld')
     DIST_DIR = 'conda_packages'
+    BUILD_SCRIPT_LINE = (
+        "python setup.py install "
+        + "--single-version-externally-managed "
+        + "--record=record.txt"
+    )
 
     def initialize_options(self):
         if not os.getenv('CONDA_PREFIX'):
@@ -261,37 +293,31 @@ class dist_conda(Command):
         with open(os.path.join(self.BUILD_DIR, tarball), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
-        # Build:
+        # Build config:
         build_config_yaml = os.path.join(self.RECIPE_DIR, 'conda_build_config.yaml')
-        template = Template(open(CONDA_BUILD_TEMPLATE).read())
         with open(build_config_yaml, 'w') as f:
-            f.write(template.substitute(PYTHONS='\n  - '.join(self.pythons)))
-        template = Template(open(META_YAML_TEMPLATE).read())
-        if self.license_file is not None:
-            license_file_line = "license_file: %s" % self.license_file
-        else:
-            license_file_line = ''
+            f.write('\n'.join(yaml_lines({'python': self.pythons})))
+
+        # Recipe:
+        package_details = {
+            'package': {'name': self.NAME, 'version': self.VERSION,},
+            'source': {'url': f'../{tarball}', 'sha256': sha256},
+            'build': {'script': self.BUILD_SCRIPT_LINE, 'number': self.build_number,},
+            'requirements': {'build': self.BUILD_REQUIRES, 'run': self.RUN_REQUIRES},
+            'about': {
+                'home': self.HOME,
+                'summary': self.SUMMARY,
+                'license': self.LICENSE,
+            },
+        }
+
         if self.build_string is not None:
-            build_string_line = "string: %s" % self.build_string
-        else:
-            build_string_line = ''
+            package_details['build']['string'] = self.build_string
+        if self.license_file is not None:
+            package_details['about']['license_file'] = self.license_file
+
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
-            f.write(
-                template.substitute(
-                    NAME=self.NAME,
-                    VERSION=self.VERSION,
-                    TARBALL=tarball,
-                    SHA256=sha256,
-                    BUILD_NUMBER=self.build_number,
-                    BUILD_STRING_LINE=build_string_line,
-                    BUILD_REQUIRES='\n    - '.join(self.BUILD_REQUIRES),
-                    RUN_REQUIRES='\n    - '.join(self.RUN_REQUIRES),
-                    HOME=self.HOME,
-                    LICENSE=self.LICENSE,
-                    LICENSE_FILE_LINE=license_file_line,
-                    SUMMARY=self.SUMMARY,
-                )
-            )
+            f.write('\n'.join(yaml_lines(package_details)))
 
         # Link scripts:
         for name, contents in self.link_scripts.items():

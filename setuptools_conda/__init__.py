@@ -9,7 +9,7 @@ except ImportError:
     import importlib_metadata
 
 try:
-    __version__ = setuptools_scm.get_version(Path(__file__).parent)
+    __version__ = setuptools_scm.get_version(Path(__file__).parent.parent)
 except LookupError:
     try:
         __version__ = importlib_metadata.version(__name__)
