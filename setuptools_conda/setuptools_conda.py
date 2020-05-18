@@ -15,7 +15,7 @@ PLATFORM_VAR_TRANSLATION = {
     'sys_platform': {'win32': 'win', 'linux': 'linux', 'darwin': 'osx'},
     'platform_system': {'Windows': 'win', 'Linux': 'linux', 'Darwin': 'osx'},
     'os_name': {'nt': 'win', 'posix': 'unix'},
-    'platform_machine': {'x86_64': 'x86_64'}
+    'platform_machine': {'x86_64': 'x86_64'},
 }
 
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -43,7 +43,7 @@ def yaml_lines(obj, indent=2):
         if lines and lines[-1]:
             lines.append('')
     else:
-        lines.append(f'- {obj}') 
+        lines.append(f'- {obj}')
     return lines
 
 
@@ -100,7 +100,6 @@ def condify_requirements(requires, extras_require, name_replacements):
     return result
 
 
-
 class dist_conda(Command):
     description = "Make conda packages"
     user_options = [
@@ -132,7 +131,6 @@ class dist_conda(Command):
             None,
             dedent(
                 """\
-
                 Build dependencies, as a comma-separated list in standard setuptools
                 format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Also accepts
                 a list of strings if passed into `setup()` via `command_options`.
@@ -180,6 +178,15 @@ class dist_conda(Command):
                 contents."""
             ),
         ),
+        (
+            'noarch',
+            None,
+            dedent(
+                """\
+                Build platform-independent packages. Only set this if your dependencies
+                are the same on all platforms and you have no compiled extensions."""
+            ),
+        ),
     ]
 
     BUILD_DIR = 'conda_build'
@@ -195,11 +202,6 @@ class dist_conda(Command):
     def initialize_options(self):
         if not os.getenv('CONDA_PREFIX'):
             raise RuntimeError("Must activate a conda environment to run dist_conda")
-        from conda_build.config import Config
-
-        config = Config()
-        self.host_platform = config.host_subdir
-
         self.VERSION = self.distribution.get_version()
         self.NAME = self.distribution.get_name()
         self.setup_requires = None
@@ -222,6 +224,7 @@ class dist_conda(Command):
         self.conda_name_differences = {}
         self.build_string = None
         self.link_scripts = {}
+        self.noarch = False
 
     def finalize_options(self):
         if self.license_file is None:
@@ -272,6 +275,7 @@ class dist_conda(Command):
                     link_scripts[os.path.basename(name)] = f.read()
             self.link_scripts = link_scripts
 
+        self.noarch = bool(self.noarch)
 
     def run(self):
         # Clean
@@ -302,7 +306,7 @@ class dist_conda(Command):
         package_details = {
             'package': {'name': self.NAME, 'version': self.VERSION,},
             'source': {'url': f'../{tarball}', 'sha256': sha256},
-            'build': {'script': self.BUILD_SCRIPT_LINE, 'number': self.build_number,},
+            'build': {'script': self.BUILD_SCRIPT_LINE, 'number': self.build_number},
             'requirements': {'build': self.BUILD_REQUIRES, 'run': self.RUN_REQUIRES},
             'about': {
                 'home': self.HOME,
@@ -311,6 +315,8 @@ class dist_conda(Command):
             },
         }
 
+        if self.noarch:
+            package_details['build']['noarch'] = 'python'
         if self.build_string is not None:
             package_details['build']['string'] = self.build_string
         if self.license_file is not None:
@@ -330,13 +336,20 @@ class dist_conda(Command):
             ['conda-build', self.RECIPE_DIR], env=environ,
         )
 
-        repodir = os.path.join(self.CONDA_BLD_PATH, self.host_platform)
+        if self.noarch:
+            platform = 'noarch'
+        else:
+            from conda_build.config import Config
+            config = Config()
+            platform = config.host_subdir
+
+        repodir = os.path.join(self.CONDA_BLD_PATH, platform)
         with open(os.path.join(repodir, 'repodata.json')) as f:
             pkgs = [os.path.join(repodir, pkg) for pkg in json.load(f)["packages"]]
 
         if not os.path.exists(self.DIST_DIR):
             os.mkdir(self.DIST_DIR)
-        dist_subdir = os.path.join(self.DIST_DIR, self.host_platform)
+        dist_subdir = os.path.join(self.DIST_DIR, platform)
         if not os.path.exists(dist_subdir):
             os.mkdir(dist_subdir)
 

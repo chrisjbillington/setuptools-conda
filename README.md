@@ -47,23 +47,10 @@ $ python setup.py dist_conda -h
 
 Options for 'dist_conda' command:
   --pythons                 Minor Python versions to build for, as a comma-
-                            separated list e.g. '2.7,3.6'. Also accepts a list
-                            of strings if passed into `setup()` via
+                            separated list e.g. '2.7, 3.6'. Also accepts a
+                            list of strings if passed into `setup()` via
                             `command_options`. Defaults to current Python
                             version
-  --platforms               Platforms to build for, as a comma-separated list
-                            of one or more of win-32,win-64,linux-32,linux-
-                            64,osx-64, or 'all' for all of them. Also accepts
-                            a list of strings if passed into `setup()` via
-                            `command_options`. Defaults to the current
-                            platform.
-  --force-conversion (-f)   Perform conversion to other platforms even if the
-                            build contains platform-specific C extensions or
-                            binaries. These extensions will not be converted,
-                            but this may be acceptable if for example the
-                            package bundles precompiled executables or
-                            libraries for multiple platforms, that it laods
-                            dynamically.
   --build-number (-n)       Conda build number. Defaults to zero
   --license-file (-l)       License file to include in the conda package.
                             Defaults to any file in the working directory
@@ -72,7 +59,7 @@ Options for 'dist_conda' command:
                             to not include a license file even if one of the
                             above is present.
   --build-string (-s)       Conda build string.
-  --setup-requires           Build dependencies, as a comma-separated list in
+  --setup-requires          Build dependencies, as a comma-separated list in
                             standard setuptools format, e.g. 'foo >= 2.0;
                             sys_platform=="win32",bar==2.3'. Also accepts a
                             list of strings if passed into `setup()` via
@@ -95,18 +82,10 @@ Options for 'dist_conda' command:
                             accepts a dict if passed into `setup()` via
                             `command_options`. Conda packages usually share a
                             name with their PyPI equivalents, but use this
-                            option to specify the mapping when they differ.
-  --no-dev-buildstring      Disable the following behavuour: If no build
-                            string is given and the package version contains
-                            the string 'dev', and the current working
-                            directory is a git repository (and the git
-                            executable can be found), then setuptools_conda
-                            will set the build string to
-                            'pyXY_<branchname>_<shorthash>_<buildnumber>'. Any
-                            hyphens in the branch name are replaced by
-                            underscores. This is useful to create uniquely-
-                            named builds for testing unmerged pull requests,
-                            etc.
+                            option to specify the mapping when they differ. If
+                            the only difference is case, no entry  is needed -
+                            names will automatically be converted to lower
+                            case.
   --link-scripts            Comma-separated list of link scripts to include,
                             such as post-link.sh, pre-unlink.bat etc. These
                             will be placed in the recipe directory before
@@ -114,5 +93,8 @@ Options for 'dist_conda' command:
                             `command_options`, this shound instead be a
                             dictionary mapping link script filenames to their
                             contents.
+  --noarch                  Build platform-independent packages. Only set this
+                            if your dependencies are the same on all platforms
+                            and you have no compiled extensions.
 ```
 
