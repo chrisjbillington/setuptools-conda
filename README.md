@@ -73,17 +73,16 @@ They can also be set if you need to with the command_options argument in `setup.
 
 ```python
 setup(
-      ...
-      command_options = (
-          {
-              'dist_conda': {
-                  'pythons': (__file__, '3.6, 3.7'),
-                  'noarch': (__file__, True),
-              }
-          },
-      )
-      ...
-      )
+    ...
+    command_options = (
+        {
+            'dist_conda': {
+                'pythons': (__file__, '3.6, 3.7'),
+                'noarch': (__file__, True),
+            }
+        },
+    )
+)
 ```
 
 
