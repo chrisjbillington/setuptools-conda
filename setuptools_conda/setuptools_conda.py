@@ -193,11 +193,6 @@ class dist_conda(Command):
     RECIPE_DIR = os.path.join(BUILD_DIR, 'recipe')
     CONDA_BLD_PATH = os.path.join(BUILD_DIR, 'conda-bld')
     DIST_DIR = 'conda_packages'
-    BUILD_SCRIPT_LINE = (
-        "python setup.py install "
-        + "--single-version-externally-managed "
-        + "--record=record.txt"
-    )
 
     def initialize_options(self):
         if not os.getenv('CONDA_PREFIX'):
@@ -282,19 +277,14 @@ class dist_conda(Command):
         shutil.rmtree(self.BUILD_DIR, ignore_errors=True)
         os.makedirs(self.RECIPE_DIR)
 
-        # Run sdist to make a source tarball in the recipe dir:
+        # Run bdist_wheel to make a wheel in the recipe dir:
         check_call(
-            [
-                sys.executable,
-                'setup.py',
-                'sdist',
-                '--dist-dir=' + self.BUILD_DIR,
-                '--formats=gztar',
-            ]
+            [sys.executable, 'setup.py', 'bdist_wheel', '--dist-dir=' + self.BUILD_DIR]
         )
 
-        tarball = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
-        with open(os.path.join(self.BUILD_DIR, tarball), 'rb') as f:
+        (wheel,) = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')]
+
+        with open(os.path.join(self.BUILD_DIR, wheel), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
         # Build config:
@@ -305,9 +295,16 @@ class dist_conda(Command):
         # Recipe:
         package_details = {
             'package': {'name': self.NAME, 'version': self.VERSION,},
-            'source': {'url': f'../{tarball}', 'sha256': sha256},
-            'build': {'script': self.BUILD_SCRIPT_LINE, 'number': self.build_number},
-            'requirements': {'build': self.BUILD_REQUIRES, 'run': self.RUN_REQUIRES},
+            'source': {'url': f'../{wheel}', 'sha256': sha256},
+            'build': {
+                'script': "{{ PYTHON }} -m pip install %s -vv" % wheel,
+                'number': self.build_number,
+            },
+            'requirements': {
+                'build': self.BUILD_REQUIRES,
+                'host': ['python', 'pip'],
+                'run': ['python'] + self.RUN_REQUIRES,
+            },
             'about': {
                 'home': self.HOME,
                 'summary': self.SUMMARY,
@@ -320,7 +317,8 @@ class dist_conda(Command):
         if self.build_string is not None:
             package_details['build']['string'] = self.build_string
         if self.license_file is not None:
-            package_details['about']['license_file'] = self.license_file
+            shutil.copy(self.license_file, self.BUILD_DIR)
+            package_details['about']['license_file'] = f'../{self.license_file}'
 
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
