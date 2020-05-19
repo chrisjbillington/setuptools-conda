@@ -317,9 +317,9 @@ class dist_conda(Command):
             package_details['build']['noarch'] = 'python'
         if self.build_string is not None:
             package_details['build']['string'] = self.build_string
-        console_scripts = self.distribution.entry_points.get('console_scripts', [])
-        gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
-        if console_scripts or gui_scripts:
+        if self.distribution.entry_points is not None:
+            console_scripts = self.distribution.entry_points.get('console_scripts', [])
+            gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
         if self.license_file is not None:
             shutil.copy(self.license_file, self.BUILD_DIR)
