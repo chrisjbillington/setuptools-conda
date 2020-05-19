@@ -1,5 +1,5 @@
 import os
-from setuptools_scm import get_version
+from pathlib import Path
 try:
     import importlib.metadata as importlib_metadata
 except ImportError:
@@ -10,13 +10,12 @@ VERSION_SCHEME = {
     "local_scheme": os.getenv("SCM_LOCAL_SCHEME", "node-and-date"),
 }
 
-try:
-    __version__ = importlib_metadata.version(__package__)
-except importlib_metadata.PackageNotFoundError:
-    __version__ = None
-
-
-__version__ = get_version(
-    '..', relative_to=__file__, fallback_version=__version__, **VERSION_SCHEME
-)
-        
+root = Path(__file__).parent.parent
+if (root / '.git').is_dir():
+    from setuptools_scm import get_version
+    __version__ = get_version(root, **VERSION_SCHEME)
+else:
+    try:
+        __version__ = importlib_metadata.version(__package__)
+    except importlib_metadata.PackageNotFoundError:
+        __version__ = None
