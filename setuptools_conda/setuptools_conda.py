@@ -271,28 +271,6 @@ class dist_conda(Command):
                     link_scripts[os.path.basename(name)] = f.read()
             self.link_scripts = link_scripts
 
-        if self.distribution.entry_points is not None:
-            # Add a post-link script to fix entry_points. Add ourself as a dependency
-            # of the package since it will need to run our code:
-            if ['setuptools_conda'] not in self.RUN_REQUIRES:
-                RUN_REQUIRES.append('setuptools_conda')
-            fix_cmd = f'python -m setuptools_conda.fix_entry_points {self.NAME}'
-            if 'post-link.bat' not in self.link_scripts:
-                self.link_scripts['post-link.bat'] = fix_cmd
-            elif not fix_cmd in self.link_scripts['post-link.bat']:
-                msg = f"""\
-                    Your package contains entry_points and a post-link.bat script. Conda
-                    does not support creating GUI scripts (see
-                    https://github.com/conda/conda/issues/9951), and it also fails to
-                    create console_scripts correctly when packages have post-link
-                    scripts. So setuptools_conda includes a post-link script to fix
-                    entry_points post install. But there can only be one post-link
-                    script, so please include the following line in your post-link
-                    script to resolve the situation:
-
-                    {fix_cmd}"""
-                raise RuntimeError(dedent(msg))
-
         self.noarch = bool(self.noarch)
 
     def run(self):
