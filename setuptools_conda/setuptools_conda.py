@@ -6,6 +6,10 @@ from setuptools import Command
 import json
 from textwrap import dedent
 import hashlib
+import sysconfig
+import importlib_metadata
+
+from distlib.scripts import ScriptMaker
 
 # Mapping of supported Python environment markers usable in setuptools requirements
 # lists to conda bools. We will translate for example 'sys_platform==win32' to [win32],
@@ -22,7 +26,38 @@ CONDA_BUILD_TEMPLATE = os.path.join(_here, 'conda_build_config.yaml.template')
 META_YAML_TEMPLATE = os.path.join(_here, 'meta.yaml.template')
 
 
-# Couldn't figure out how to use PyYAML
+def fix_gui_scripts(*distribution_names):
+    """Re-make all gui_scripts entry_points for the given distributions. This is
+    intended to be called via the fix-gui-scripts script as a post-link script for a
+    conda package (hence the sys.argv[1:]). This is a workaround for the fact that conda
+    doesn't support GUI scripts."""
+
+    # TODO: argparse?
+
+    if not distribution_names:
+        distribution_names = sys.argv[1:]
+
+    # There are many places scripts can go, but we're in conda so the main scripts dir
+    # at sysconfig.get_path('scripts') is the only possibility for us:
+    maker = ScriptMaker(None, sysconfig.get_path('scripts'))
+    maker.clobber = True  # Overwrite existing scripts
+    maker.variants = {''}  # Don't make variants with Python major.minor suffixes
+
+    for name in distribution_names:
+        # Get the gui script specs and format them how Scriptmaker wants them
+        distribution = importlib_metadata.Distribution.from_name(name)
+        to_make = [
+            f'{e.name} = {e.value}'
+            for e in distribution.entry_points
+            if e.group == 'gui_scripts'
+        ]
+
+        # Make 'em:
+        maker.make_multiple(to_make, {'gui': True})
+
+
+# Couldn't figure out how to use PyYAML to produce output looking like conda recipes are
+# usually formatted:
 def yaml_lines(obj, indent=2):
     lines = []
     if isinstance(obj, dict):
@@ -298,7 +333,7 @@ class dist_conda(Command):
             'package': {'name': self.NAME, 'version': self.VERSION,},
             'source': {'url': f'../{wheel}', 'sha256': sha256},
             'build': {
-                'script': "{{ PYTHON }} -m pip install %s --no-deps -vv" % wheel,
+                'script': "{{ PYTHON }} -m pip install %s -vv" % wheel,
                 'number': self.build_number,
             },
             'requirements': {
@@ -321,12 +356,27 @@ class dist_conda(Command):
             console_scripts = self.distribution.entry_points.get('console_scripts', [])
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
+        else: 
+            # We need to know about this in a sec when we're making a pre-link script:
+            gui_scripts = None
         if self.license_file is not None:
             shutil.copy(self.license_file, self.BUILD_DIR)
             package_details['about']['license_file'] = f'../{self.license_file}'
 
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
+
+        if gui_scripts:
+            if 'post-link.bat' not in self.link_scripts:
+                self.link_scripts['post-link.bat'] = f'fix-gui-scripts {self.NAME}'
+            elif not 'fix-gui-scripts' in self.link_scripts['post-link.bat']:
+                msg = f"""Your package contains gui_scripts and a post-link.bat script.
+                    Conda does not support creating GUI scripts
+                    (https://github.com/conda/conda/issues/9951), so setuptools_conda
+                    works includes a post-link to install them. But there can only be
+                    one post-link script. Please include the line `fix-gui-scripts
+                    {self.NAME}` in your post-link script to resolve the situation."""
+                raise RuntimeError(' '.join(msg.split()))
 
         # Link scripts:
         for name, contents in self.link_scripts.items():
@@ -336,18 +386,14 @@ class dist_conda(Command):
         environ = os.environ.copy()
         environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
         check_call(
-            [
-                'conda-build',
-                '--no-test',
-                self.RECIPE_DIR,
-            ],
-            env=environ,
+            ['conda-build', '--no-test', self.RECIPE_DIR,], env=environ,
         )
 
         if self.noarch:
             platform = 'noarch'
         else:
             from conda_build.config import Config
+
             config = Config()
             platform = config.host_subdir
 
