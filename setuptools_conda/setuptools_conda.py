@@ -6,10 +6,6 @@ from setuptools import Command
 import json
 from textwrap import dedent
 import hashlib
-import sysconfig
-import importlib_metadata
-
-from distlib.scripts import ScriptMaker
 
 # Mapping of supported Python environment markers usable in setuptools requirements
 # lists to conda bools. We will translate for example 'sys_platform==win32' to [win32],
@@ -24,36 +20,6 @@ PLATFORM_VAR_TRANSLATION = {
 _here = os.path.dirname(os.path.abspath(__file__))
 CONDA_BUILD_TEMPLATE = os.path.join(_here, 'conda_build_config.yaml.template')
 META_YAML_TEMPLATE = os.path.join(_here, 'meta.yaml.template')
-
-
-def fix_gui_scripts(*distribution_names):
-    """Re-make all gui_scripts entry_points for the given distributions. This is
-    intended to be called via the fix-gui-scripts script as a post-link script for a
-    conda package (hence the sys.argv[1:]). This is a workaround for the fact that conda
-    doesn't support GUI scripts."""
-
-    # TODO: argparse?
-
-    if not distribution_names:
-        distribution_names = sys.argv[1:]
-
-    # There are many places scripts can go, but we're in conda so the main scripts dir
-    # at sysconfig.get_path('scripts') is the only possibility for us:
-    maker = ScriptMaker(None, sysconfig.get_path('scripts'))
-    maker.clobber = True  # Overwrite existing scripts
-    maker.variants = {''}  # Don't make variants with Python major.minor suffixes
-
-    for name in distribution_names:
-        # Get the gui script specs and format them how Scriptmaker wants them
-        distribution = importlib_metadata.Distribution.from_name(name)
-        to_make = [
-            f'{e.name} = {e.value}'
-            for e in distribution.entry_points
-            if e.group == 'gui_scripts'
-        ]
-
-        # Make 'em:
-        maker.make_multiple(to_make, {'gui': True})
 
 
 # Couldn't figure out how to use PyYAML to produce output looking like conda recipes are
@@ -305,6 +271,28 @@ class dist_conda(Command):
                     link_scripts[os.path.basename(name)] = f.read()
             self.link_scripts = link_scripts
 
+        if self.distribution.entry_points is not None:
+            # Add a post-link script to fix entry_points. Add ourself as a dependency
+            # of the package since it will need to run our code:
+            if ['setuptools_conda'] not in self.RUN_REQUIRES:
+                RUN_REQUIRES.append('setuptools_conda')
+            fix_cmd = f'python -m setuptools_conda.fix_entry_points {self.NAME}'
+            if 'post-link.bat' not in self.link_scripts:
+                self.link_scripts['post-link.bat'] = fix_cmd
+            elif not fix_cmd in self.link_scripts['post-link.bat']:
+                msg = f"""\
+                    Your package contains entry_points and a post-link.bat script. Conda
+                    does not support creating GUI scripts (see
+                    https://github.com/conda/conda/issues/9951), and it also fails to
+                    create console_scripts correctly when packages have post-link
+                    scripts. So setuptools_conda includes a post-link script to fix
+                    entry_points post install. But there can only be one post-link
+                    script, so please include the following line in your post-link
+                    script to resolve the situation:
+
+                    {fix_cmd}"""
+                raise RuntimeError(dedent(msg))
+
         self.noarch = bool(self.noarch)
 
     def run(self):
@@ -356,9 +344,6 @@ class dist_conda(Command):
             console_scripts = self.distribution.entry_points.get('console_scripts', [])
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
-        else: 
-            # We need to know about this in a sec when we're making a pre-link script:
-            gui_scripts = None
         if self.license_file is not None:
             shutil.copy(self.license_file, self.BUILD_DIR)
             package_details['about']['license_file'] = f'../{self.license_file}'
@@ -366,17 +351,12 @@ class dist_conda(Command):
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
 
-        if gui_scripts:
-            if 'post-link.bat' not in self.link_scripts:
-                self.link_scripts['post-link.bat'] = f'fix-gui-scripts {self.NAME}'
-            elif not 'fix-gui-scripts' in self.link_scripts['post-link.bat']:
-                msg = f"""Your package contains gui_scripts and a post-link.bat script.
-                    Conda does not support creating GUI scripts
-                    (https://github.com/conda/conda/issues/9951), so setuptools_conda
-                    works includes a post-link to install them. But there can only be
-                    one post-link script. Please include the line `fix-gui-scripts
-                    {self.NAME}` in your post-link script to resolve the situation."""
-                raise RuntimeError(' '.join(msg.split()))
+
+        # import pathlib
+        # sys.path.insert(0, str(pathlib.Path.home() / 'pythonlib'))
+        # import embed
+
+        
 
         # Link scripts:
         for name, contents in self.link_scripts.items():
