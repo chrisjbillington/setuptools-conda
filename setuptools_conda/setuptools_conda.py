@@ -241,13 +241,13 @@ class dist_conda(Command):
             )
 
         if self.setup_requires is None:
-            self.BUILD_REQUIRES = condify_requirements(
+            self.SETUP_REQUIRES = condify_requirements(
                 self.distribution.setup_requires, {}, self.conda_name_differences
             )
         else:
             if isinstance(self.setup_requires, str):
                 self.setup_requires = _split(self.setup_requires)
-            self.BUILD_REQUIRES = condify_requirements(
+            self.SETUP_REQUIRES = condify_requirements(
                 self.setup_requires, {}, self.conda_name_differences
             )
 
@@ -279,14 +279,19 @@ class dist_conda(Command):
         shutil.rmtree('build', ignore_errors=True)
         os.makedirs(self.RECIPE_DIR)
 
-        # Run bdist_wheel to make a wheel in the recipe dir:
+        # Run sdist to make a source tarball in the recipe dir:
         check_call(
-            [sys.executable, 'setup.py', 'bdist_wheel', '--dist-dir=' + self.BUILD_DIR]
+            [
+                sys.executable,
+                'setup.py',
+                'sdist',
+                '--dist-dir=' + self.BUILD_DIR,
+                '--formats=gztar',
+            ]
         )
 
-        (wheel,) = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')]
-
-        with open(os.path.join(self.BUILD_DIR, wheel), 'rb') as f:
+        dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+        with open(os.path.join(self.BUILD_DIR, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
         # Build config:
@@ -297,14 +302,14 @@ class dist_conda(Command):
         # Recipe:
         package_details = {
             'package': {'name': self.NAME, 'version': self.VERSION,},
-            'source': {'url': f'../{wheel}', 'sha256': sha256},
+            'source': {'url': f'../{dist}', 'sha256': sha256},
             'build': {
-                'script': "{{ PYTHON }} -m pip install %s -vv" % wheel,
+                'script': "{{ PYTHON }} -m pip install . -vv",
                 'number': self.build_number,
             },
             'requirements': {
-                'build': self.BUILD_REQUIRES,
-                'host': ['python', 'pip'],
+                'build': [],
+                'host': ['python', 'pip'] + self.SETUP_REQUIRES,
                 'run': ['python'] + self.RUN_REQUIRES,
             },
             'about': {
@@ -325,6 +330,13 @@ class dist_conda(Command):
         if self.license_file is not None:
             shutil.copy(self.license_file, self.BUILD_DIR)
             package_details['about']['license_file'] = f'../{self.license_file}'
+
+        if self.distribution.ext_modules is not None:
+            compilers = ["{{ compiler('c') }}", "{{ compiler('cxx') }}"]
+            package_details['requirements']['build'].extend(compilers)
+        else:
+            # No need for this section then:
+            del package_details['requirements']['build']
 
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
