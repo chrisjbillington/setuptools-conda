@@ -351,13 +351,6 @@ class dist_conda(Command):
         with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
 
-
-        # import pathlib
-        # sys.path.insert(0, str(pathlib.Path.home() / 'pythonlib'))
-        # import embed
-
-        
-
         # Link scripts:
         for name, contents in self.link_scripts.items():
             with open(os.path.join(self.RECIPE_DIR, name), 'w') as f:
