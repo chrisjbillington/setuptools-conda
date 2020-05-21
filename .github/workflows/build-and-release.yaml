@@ -19,8 +19,14 @@ jobs:
     strategy:
       matrix:
         include:
+        - os: windows-latest
+          miniconda: Miniconda3-latest-Windows-x86_64.exe
+        - os: windows-latest
+          miniconda: Miniconda3-latest-Windows-x86.exe
         - os: ubuntu-latest
           miniconda: Miniconda3-latest-Linux-x86_64.sh
+        - os: macos-latest
+          miniconda: Miniconda3-latest-MacOSX-x86_64.sh
 
     env:
       SCM_LOCAL_SCHEME: no-local-version
@@ -34,6 +40,9 @@ jobs:
 
     - name: Download miniconda
       run: curl -LO "https://repo.continuum.io/miniconda/${{ matrix.miniconda }}" 
+    - name: Install miniconda (Windows)
+      if: matrix.os == 'windows-latest'
+      run:  cmd //C "${{ matrix.miniconda }} /S /D=%CD%\.miniconda"
     - name: Install miniconda (Unix)
       if: matrix.os != 'windows-latest'
       run:  bash "${{ matrix.miniconda }}" -b -p .miniconda
@@ -52,7 +61,7 @@ jobs:
 
 
 
-  # start /wait "" Miniconda3-latest-Windows-x86.exe /S
+  # 
   # upload:
   #   name: Upload
   #   runs-on: ubuntu-latest
