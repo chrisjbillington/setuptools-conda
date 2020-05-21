@@ -15,12 +15,12 @@ defaults:
 jobs:
   conda_build:
     name: Conda Build
-    runs-on: ubuntu-latest
-    # runs-on: ${{ matrix.os }}
-    # strategy:
-    #   matrix:
-    #     os: [windows-latest, ubuntu-latest, macos-latest]
-    #     architecture: ['x64', 'x86']
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+        - os: ubuntu-latest
+          miniconda: Miniconda3-latest-Linux-x86_64.sh
 
     env:
       SCM_LOCAL_SCHEME: no-local-version
@@ -32,13 +32,17 @@ jobs:
         git fetch --prune --unshallow
         git tag -d $(git tag --points-at HEAD)
 
-    - run: |
-        url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-        curl -Lo miniconda.sh "$url" 
-        bash miniconda.sh -b -p .miniconda
+    - name: Download miniconda
+      run: curl -LO "https://repo.continuum.io/miniconda/${{ matrix.miniconda }}" 
+    - name: Install miniconda (Unix)
+      if: matrix.os != 'windows-latest'
+      run:  bash "${{ matrix.miniconda }}" -b -p .miniconda
+
+    - name: Build conda packages
+      run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
-        conda install -y conda-build conda-verify importlib_metadata setuptools_scm
+        conda install conda-build conda-verify importlib_metadata setuptools_scm
         python setup.py dist_conda
     
     - uses: actions/upload-artifact@v1
