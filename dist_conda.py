@@ -328,8 +328,7 @@ class dist_conda(Command):
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
         if self.license_file is not None:
-            shutil.copy(self.license_file, self.BUILD_DIR)
-            package_details['about']['license_file'] = f'../{self.license_file}'
+            package_details['about']['license_file'] = self.license_file
 
         if self.distribution.ext_modules is not None:
             compilers = ["{{ compiler('c') }}", "{{ compiler('cxx') }}"]
