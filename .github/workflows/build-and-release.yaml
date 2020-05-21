@@ -13,7 +13,7 @@ defaults:
     shell: bash
 
 jobs:
-  conda_build:
+  build:
     name: Conda Build
     runs-on: ${{ matrix.os }}
     strategy:
@@ -42,6 +42,7 @@ jobs:
       run: curl -LO "https://repo.continuum.io/miniconda/${{ matrix.miniconda }}" 
     - name: Install miniconda (Windows)
       if: matrix.os == 'windows-latest'
+      # Args aren't passed correctly to the miniconda installer unless run with cmd.exe:
       run:  cmd //C "${{ matrix.miniconda }} /S /D=%CD%\.miniconda"
     - name: Install miniconda (Unix)
       if: matrix.os != 'windows-latest'
@@ -51,7 +52,7 @@ jobs:
       run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
-        conda install conda-build conda-verify importlib_metadata setuptools_scm
+        conda install conda-build conda-verify importlib_metadata setuptools_scm ripgrep
         python setup.py dist_conda
     
     - uses: actions/upload-artifact@v1
@@ -60,28 +61,41 @@ jobs:
         path: ./conda_packages
 
 
+  upload:
+    name: Upload to Anaconda Cloud
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      MINICONDA: Miniconda3-latest-Linux-x86_64.sh
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: conda_packages
+        path: ./conda_packages
 
-  # 
-  # upload:
-  #   name: Upload
-  #   runs-on: ubuntu-latest
-  #   needs: build
-  #   steps:
-  #   - uses: actions/download-artifact@v2
-  #     with:
-  #       name: dist
-  #       path: ./dist
+    - name: Install Miniconda and cloud client
+      run: |
+        curl -LO "https://repo.continuum.io/miniconda/$MINICONDA" 
+        bash "$MINICONDA" -b -p .miniconda
+        source .miniconda/etc/profile.d/conda.sh
+        conda activate
+        conda install anaconda-client
 
-  #   - name: TestPyPI
-  #     uses: pypa/gh-action-pypi-publish@v1.1.0
-  #     with:
-  #       user: __token__
-  #       password: ${{ secrets.testpypi }}
-  #       repository_url: https://test.pypi.org/legacy/
+    - name: Upload to test label
+      run:
+        source .miniconda/etc/profile.d/conda.sh
+        conda activate
+        anaconda upload \
+          --channel cbillington \
+          --label test \
+          --token ${{ secrets.ANACONDA_CLOUD_TOKEN }} conda_packages/*
 
-  #   - name: PyPI
-  #     if: github.event.ref_type == 'tag'
-  #     uses: pypa/gh-action-pypi-publish@v1.1.0
-  #     with:
-  #       user: __token__
-  #       password: ${{ secrets.pypi }}
+
+    - name: Upload to main label
+      if: github.event.ref_type == 'tag'
+      run:
+        source .miniconda/etc/profile.d/conda.sh
+        conda activate
+        anaconda upload \
+          --channel cbillington \
+          --token ${{ secrets.ANACONDA_CLOUD_TOKEN }} conda_packages/*
