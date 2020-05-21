@@ -108,9 +108,12 @@ class dist_conda(Command):
             None,
             dedent(
                 """\
-                Minor Python versions to build for, as a comma-separated list e.g.
-                '2.7, 3.6'. Also accepts a list of strings if passed into `setup()` via
-                `command_options`. Defaults to current Python version"""
+                Minor Python versions to build for, as a comma-separated list e.g. '2.7,
+                3.6'. Also accepts a list of strings if passed into `setup()` via
+                `command_options`. Defaults to the list of Python versions found in
+                package classifiers of the form 'Programming Language :: Python :: 3.7'
+                or the current Python version if none present.
+                """
             ),
         ),
         ('build-number=', 'n', "Conda build number. Defaults to zero"),
@@ -215,7 +218,7 @@ class dist_conda(Command):
             ]:
                 self.license_file = filename
                 break
-        self.pythons = '%d.%d' % (sys.version_info.major, sys.version_info.minor)
+        self.pythons = []
         self.build_number = 0
         self.conda_name_differences = {}
         self.build_string = None
@@ -272,6 +275,19 @@ class dist_conda(Command):
             self.link_scripts = link_scripts
 
         self.noarch = bool(self.noarch)
+
+        if self.pythons and self.noarch:
+            msg = """Can't specify `pythons` and `noarch` simultaneously"""
+            raise ValueError(msg)
+
+        if not (self.pythons or self.noarch):
+            for line in self.distribution.get_classifiers():
+                parts = [s.strip() for s in line.split('::')]
+                if len(parts) == 3 and parts[0:2] == ['Programming Language', 'Python']:
+                    if len(parts[2].split('.')) == 2:
+                        self.pythons.append(parts[2])
+        if not self.pythons:
+            self.pythons = [f'{sys.version_info.major}.{sys.version_info.minor}']
 
     def run(self):
         # Clean
