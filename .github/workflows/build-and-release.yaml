@@ -82,7 +82,7 @@ jobs:
         conda install anaconda-client
 
     - name: Upload to test label
-      run:
+      run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
         anaconda upload \
@@ -93,7 +93,7 @@ jobs:
 
     - name: Upload to main label
       if: github.event.ref_type == 'tag'
-      run:
+      run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
         anaconda upload \
