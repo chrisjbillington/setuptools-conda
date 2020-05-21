@@ -325,7 +325,7 @@ class dist_conda(Command):
             },
             'requirements': {
                 'build': [],
-                'host': ['python', 'pip'] + self.SETUP_REQUIRES,
+                'host': ['python', 'pip', 'wheel'] + self.SETUP_REQUIRES,
                 'run': ['python'] + self.RUN_REQUIRES,
             },
             'about': {
