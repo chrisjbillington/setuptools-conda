@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - github-actions
+  create:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  conda_build:
+    name: Conda Build
+    runs-on: ubuntu-latest
+    # runs-on: ${{ matrix.os }}
+    # strategy:
+    #   matrix:
+    #     os: [windows-latest, ubuntu-latest, macos-latest]
+    #     architecture: ['x64', 'x86']
+
+    env:
+      SCM_LOCAL_SCHEME: no-local-version
+
+    steps:
+    - uses: actions/checkout@v2
+    - if: github.event.ref_type != 'tag'
+      run: |
+        git fetch --prune --unshallow
+        git tag -d $(git tag --points-at HEAD)
+
+    - run: |
+        url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        curl -Lo miniconda.sh "$url" 
+        bash miniconda.sh -b -p .miniconda
+        source .miniconda/etc/profile.d/conda.sh
+        conda activate
+        conda install -y conda-build conda-verify importlib_metadata setuptools_scm
+        python setup.py dist_conda
+    
+    - uses: actions/upload-artifact@v1
+      with:
+        name: conda_packages
+        path: ./conda_packages
+
+
+
+  # start /wait "" Miniconda3-latest-Windows-x86.exe /S
+  # upload:
+  #   name: Upload
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   steps:
+  #   - uses: actions/download-artifact@v2
+  #     with:
+  #       name: dist
+  #       path: ./dist
+
+  #   - name: TestPyPI
+  #     uses: pypa/gh-action-pypi-publish@v1.1.0
+  #     with:
+  #       user: __token__
+  #       password: ${{ secrets.testpypi }}
+  #       repository_url: https://test.pypi.org/legacy/
+
+  #   - name: PyPI
+  #     if: github.event.ref_type == 'tag'
+  #     uses: pypa/gh-action-pypi-publish@v1.1.0
+  #     with:
+  #       user: __token__
+  #       password: ${{ secrets.pypi }}
