@@ -307,16 +307,17 @@ class dist_conda(Command):
 
         # Run sdist to make a source tarball in the recipe dir:
         check_call(
-            [
-                sys.executable,
-                'setup.py',
-                'sdist',
-                '--dist-dir=' + self.BUILD_DIR,
-                '--formats=gztar',
-            ]
+            # [
+            #     sys.executable,
+            #     'setup.py',
+            #     'bdist_wheel',
+            #     '--dist-dir=' + self.BUILD_DIR,
+            # ]
+            [sys.executable, 'setup.py', 'bdist_wheel', '--dist-dir=' + self.BUILD_DIR]
         )
 
-        dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+        # dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+        (dist,) = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')]
         with open(os.path.join(self.BUILD_DIR, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
@@ -348,12 +349,12 @@ class dist_conda(Command):
         with open(os.path.join(self.RECIPE_DIR, 'build.sh'), 'w') as f:
             f.write(
                 dedent(
-                    """\
+                    f"""\
                     #!/bin/bash
                     set -ex
                     unset _PYTHON_SYSCONFIGDATA_NAME
                     unset _CONDA_PYTHON_SYSCONFIGDATA_NAME
-                    "$PYTHON" -m pip install .
+                    "$PYTHON" -m pip install {dist}
                     """
                 )
             )
@@ -361,10 +362,10 @@ class dist_conda(Command):
         with open(os.path.join(self.RECIPE_DIR, 'bld.bat'), 'w') as f:
             f.write(
                 dedent(
-                    """\
+                    f"""\
                     set _PYTHON_SYSCONFIGDATA_NAME=
                     set _CONDA_PYTHON_SYSCONFIGDATA_NAME=
-                    %PYTHON% -m pip install .
+                    %PYTHON% -m pip install {dist}
                     EXIT /B %ERRORLEVEL%
                     """
                 )
@@ -380,7 +381,9 @@ class dist_conda(Command):
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
         if self.license_file is not None:
-            package_details['about']['license_file'] = self.license_file
+            # package_details['about']['license_file'] = self.license_file
+            shutil.copy(self.license_file, self.BUILD_DIR)
+            package_details['about']['license_file'] = f'../{self.license_file}'
 
         if False: #self.distribution.ext_modules is not None:
             compilers = ["{{ compiler('c') }}", "{{ compiler('cxx') }}"]
