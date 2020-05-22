@@ -112,7 +112,8 @@ class dist_conda(Command):
                 3.6'. Also accepts a list of strings if passed into `setup()` via
                 `command_options`. Defaults to the list of Python versions found in
                 package classifiers of the form 'Programming Language :: Python :: 3.7'
-                or the current Python version if none present.
+                or the current Python version if none present. Also defaults to the
+                current Python version if --build-input-dist-type=wheel
                 """
             ),
         ),
@@ -191,16 +192,21 @@ class dist_conda(Command):
                 have no compiled extensions."""
             ),
         ),
-        # (
-        #     'conda-input-dist-type',
-        #     None,
-        #     dedent(
-        #         """\
-
-        #         'sdist', or 'wheel': What kind of dist, to initially build and pass
-        #         specify """
-        #     ),
-        # ),
+        (
+            'from-wheel',
+            None,
+            dedent(
+                """\
+                Whether to build a wheel before invoking conda-build. By default
+                setuptools_conda invokes conda-build on an sdist such that any
+                compilation of extensions will be done in the conda build environment.
+                However, if your extensions are not able to be compiled with conda's
+                compiler configuration, you might set this option to pass conda-build a
+                wheel that has been pre-compiled with the system configuration. In this
+                case, setuptools_conda will only produce a conda package for the current
+                Python version."""
+            ),
+        ),
     ]
 
     BUILD_DIR = 'conda_build'
@@ -234,6 +240,7 @@ class dist_conda(Command):
         self.build_string = None
         self.link_scripts = {}
         self.noarch = False
+        self.from_wheel = False
 
     def finalize_options(self):
         if self.license_file is None:
@@ -290,7 +297,11 @@ class dist_conda(Command):
             msg = """Can't specify `pythons` and `noarch` simultaneously"""
             raise ValueError(msg)
 
-        if not (self.pythons or self.noarch):
+        if self.pythons and self.from_wheel:
+            msg = """Can't specify `pythons` if `from_wheel==True"""
+            raise ValueError(msg)
+
+        if not (self.pythons or self.noarch or self.from_wheel):
             for line in self.distribution.get_classifiers():
                 parts = [s.strip() for s in line.split('::')]
                 if len(parts) == 3 and parts[0:2] == ['Programming Language', 'Python']:
@@ -305,19 +316,21 @@ class dist_conda(Command):
         shutil.rmtree('build', ignore_errors=True)
         os.makedirs(self.RECIPE_DIR)
 
-        # Run sdist to make a source tarball in the recipe dir:
-        check_call(
-            # [
-            #     sys.executable,
-            #     'setup.py',
-            #     'bdist_wheel',
-            #     '--dist-dir=' + self.BUILD_DIR,
-            # ]
-            [sys.executable, 'setup.py', 'bdist_wheel', '--dist-dir=' + self.BUILD_DIR]
-        )
+        # Run sdist or bdist_wheel to make a source tarball or wheel in the recipe dir:
+        cmd = [sys.executable, 'setup.py']
+        if self.from_wheel:
+            cmd += ['bdist_wheel']
+        else:
+            cmd += ['sdist', '--formats=gztar']
+        cmd += ['--dist-dir=' + self.BUILD_DIR]
 
-        # dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
-        (dist,) = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')]
+        check_call(cmd)
+
+        if self.from_wheel:
+            dist = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')][0]
+        else:
+            dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+
         with open(os.path.join(self.BUILD_DIR, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
@@ -326,12 +339,14 @@ class dist_conda(Command):
         with open(build_config_yaml, 'w') as f:
             f.write('\n'.join(yaml_lines({'python': self.pythons})))
 
+        pip_target = dist if self.from_wheel else '.'
+
         # Recipe:
         package_details = {
             'package': {'name': self.NAME, 'version': self.VERSION,},
             'source': {'url': f'../{dist}', 'sha256': sha256},
             'build': {
-                # 'script': "{{ PYTHON }} -m pip install . -vv",
+                'script': "{{ PYTHON }} -m pip install " + pip_target,
                 'number': self.build_number,
             },
             'requirements': {
@@ -346,32 +361,6 @@ class dist_conda(Command):
             },
         }
 
-        with open(os.path.join(self.RECIPE_DIR, 'build.sh'), 'w') as f:
-            f.write(
-                dedent(
-                    f"""\
-                    #!/bin/bash
-                    set -ex
-                    unset _PYTHON_SYSCONFIGDATA_NAME
-                    unset _CONDA_PYTHON_SYSCONFIGDATA_NAME
-                    "$PYTHON" -m pip install {dist}
-                    """
-                )
-            )
-
-        with open(os.path.join(self.RECIPE_DIR, 'bld.bat'), 'w') as f:
-            f.write(
-                dedent(
-                    f"""\
-                    set _PYTHON_SYSCONFIGDATA_NAME=
-                    set _CONDA_PYTHON_SYSCONFIGDATA_NAME=
-                    %PYTHON% -m pip install {dist}
-                    EXIT /B %ERRORLEVEL%
-                    """
-                )
-            )
-
-
         if self.noarch:
             package_details['build']['noarch'] = 'python'
         if self.build_string is not None:
@@ -381,11 +370,10 @@ class dist_conda(Command):
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
         if self.license_file is not None:
-            # package_details['about']['license_file'] = self.license_file
             shutil.copy(self.license_file, self.BUILD_DIR)
             package_details['about']['license_file'] = f'../{self.license_file}'
 
-        if False: #self.distribution.ext_modules is not None:
+        if self.distribution.ext_modules is not None and not self.from_wheel:
             compilers = ["{{ compiler('c') }}", "{{ compiler('cxx') }}"]
             package_details['requirements']['build'].extend(compilers)
         else:
