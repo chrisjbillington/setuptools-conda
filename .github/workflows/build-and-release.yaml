@@ -97,7 +97,7 @@ jobs:
       run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
-        anaconda
+        anaconda \
           --token ${{ secrets.ANACONDA_API_TOKEN }} \
           upload \
           --user cbillington \
