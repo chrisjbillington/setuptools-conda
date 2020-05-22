@@ -90,13 +90,15 @@ jobs:
           upload \
           --user cbillington \
           --label test \
-          conda_packages/*
+          conda_packages/*/*
           
     - name: Upload to main label
       if: github.event.ref_type == 'tag'
       run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
-        anaconda upload \
+        anaconda
+          --token ${{ secrets.ANACONDA_API_TOKEN }} \
+          upload \
           --user cbillington \
-          --token ${{ secrets.ANACONDA_API_TOKEN }} conda_packages/*
+          conda_packages/*/*
