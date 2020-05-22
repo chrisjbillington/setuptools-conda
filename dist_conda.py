@@ -191,6 +191,16 @@ class dist_conda(Command):
                 have no compiled extensions."""
             ),
         ),
+        # (
+        #     'conda-input-dist-type',
+        #     None,
+        #     dedent(
+        #         """\
+
+        #         'sdist', or 'wheel': What kind of dist, to initially build and pass
+        #         specify """
+        #     ),
+        # ),
     ]
 
     BUILD_DIR = 'conda_build'
@@ -320,7 +330,7 @@ class dist_conda(Command):
             'package': {'name': self.NAME, 'version': self.VERSION,},
             'source': {'url': f'../{dist}', 'sha256': sha256},
             'build': {
-                'script': "{{ PYTHON }} -m pip install . -vv",
+                # 'script': "{{ PYTHON }} -m pip install . -vv",
                 'number': self.build_number,
             },
             'requirements': {
@@ -335,6 +345,32 @@ class dist_conda(Command):
             },
         }
 
+        with open(os.path.join(self.RECIPE_DIR, 'build.sh'), 'w') as f:
+            f.write(
+                dedent(
+                    """\
+                    #!/bin/bash
+                    set -ex
+                    unset _PYTHON_SYSCONFIGDATA_NAME
+                    unset _CONDA_PYTHON_SYSCONFIGDATA_NAME
+                    "$PYTHON" -m pip install .
+                    """
+                )
+            )
+
+        with open(os.path.join(self.RECIPE_DIR, 'bld.bat'), 'w') as f:
+            f.write(
+                dedent(
+                    """\
+                    set _PYTHON_SYSCONFIGDATA_NAME=
+                    set _CONDA_PYTHON_SYSCONFIGDATA_NAME=
+                    %PYTHON% -m pip install .
+                    EXIT /B %ERRORLEVEL%
+                    """
+                )
+            )
+
+
         if self.noarch:
             package_details['build']['noarch'] = 'python'
         if self.build_string is not None:
@@ -346,7 +382,7 @@ class dist_conda(Command):
         if self.license_file is not None:
             package_details['about']['license_file'] = self.license_file
 
-        if self.distribution.ext_modules is not None:
+        if False: #self.distribution.ext_modules is not None:
             compilers = ["{{ compiler('c') }}", "{{ compiler('cxx') }}"]
             package_details['requirements']['build'].extend(compilers)
         else:
