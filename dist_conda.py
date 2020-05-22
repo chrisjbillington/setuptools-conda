@@ -381,7 +381,10 @@ class dist_conda(Command):
 
         if not os.path.exists(self.DIST_DIR):
             os.mkdir(self.DIST_DIR)
+        dist_subdir = os.path.join(self.DIST_DIR, platform)
+        if not os.path.exists(dist_subdir):
+            os.mkdir(dist_subdir)
 
         for pkg in pkgs:
-            print("copying %s to %s" % (os.path.basename(pkg), self.DIST_DIR))
-            shutil.copy(pkg, self.DIST_DIR)
+            print("copying %s to %s" % (os.path.basename(pkg), dist_subdir))
+            shutil.copy(pkg, dist_subdir)
