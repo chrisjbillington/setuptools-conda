@@ -187,7 +187,7 @@ class dist_conda(Command):
             None,
             dedent(
                 """\
-                Build platform-independent packages. Only set this if your dependencies
+                Build a platform-independent package. Only set this if your dependencies
                 are the same on all platforms and Python versions you support, and you
                 have no compiled extensions."""
             ),

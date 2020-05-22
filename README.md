@@ -95,8 +95,12 @@ Options for 'dist_conda' command:
   --pythons                 Minor Python versions to build for, as a comma-
                             separated list e.g. '2.7, 3.6'. Also accepts a
                             list of strings if passed into `setup()` via
-                            `command_options`. Defaults to current Python
-                            version
+                            `command_options`. Defaults to the list of Python
+                            versions found in package classifiers of the form
+                            'Programming Language :: Python :: 3.7' or the
+                            current Python version if none present. Also
+                            defaults to the current Python version if --build-
+                            input-dist-type=wheel
   --build-number (-n)       Conda build number. Defaults to zero
   --license-file (-l)       License file to include in the conda package.
                             Defaults to any file in the working directory
@@ -139,8 +143,19 @@ Options for 'dist_conda' command:
                             `command_options`, this shound instead be a
                             dictionary mapping link script filenames to their
                             contents.
-  --noarch                  Build platform-independent packages. Only set this
+  --noarch                  Build a platform-independent package. Only set this
                             if your dependencies are the same on all platforms
                             and Python versions you support, and you have no
                             compiled extensions.
+  --from-wheel              Whether to build a wheel before invoking conda-
+                            build. By default setuptools_conda invokes conda-
+                            build on an sdist such that any compilation of
+                            extensions will be done in the conda build
+                            environment. However, if your extensions are not
+                            able to be compiled with conda's compiler
+                            configuration, you might set this option to pass
+                            conda-build a wheel that has been pre-compiled
+                            with the system configuration. In this case,
+                            setuptools_conda will only produce a conda package
+                            for the current Python version.
 ```
