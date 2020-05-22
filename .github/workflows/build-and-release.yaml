@@ -82,6 +82,7 @@ jobs:
         conda install anaconda-client
 
     - name: Upload to test label
+      if: github.event.ref_type != 'tag'
       run: |
         source .miniconda/etc/profile.d/conda.sh
         conda activate
