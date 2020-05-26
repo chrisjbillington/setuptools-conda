@@ -6,7 +6,7 @@ from pathlib import Path
 
 # Normally packages don't have to do this - the dist_conda command should be
 # automatically available. But since we're installing it, it isn't there yet!
-from dist_conda import dist_conda
+from setuptools_conda.setuptools_conda import dist_conda
 CMDCLASS = {'dist_conda': dist_conda}
 
 VERSION_SCHEME = {

@@ -1,0 +1,17 @@
+[build-system]
+# Since our build system is ourself and we are not necessarily installed yet, this is
+# the full list of our run-time requirements:
+requires = [
+    "setuptools",
+    "wheel",
+    "setuptools_scm >= 4.1",
+    "importlib_metadata",
+    "distlib",
+    "toml",
+    "conda-build",
+    "conda-verify",
+    "ripgrep",
+]
+
+[tools.setuptools-conda]
+channels = ["conda-forge"]
