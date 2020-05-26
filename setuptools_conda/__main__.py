@@ -84,7 +84,7 @@ def main():
     )
 
     parser.add_argument(
-        'project',
+        'project_path',
         action="store",
         help="""Path to project; e.g. '.' if the project's `setup.py` and any of
         `pyproject.toml` or `setup.cfg` are in the current working directory.""",
@@ -121,7 +121,7 @@ def main():
         evaluate_requirements,
     )
 
-    proj = Path(args.project)
+    proj = Path(args.project_path)
     
     requires = get_requires(proj)
     requires = evaluate_requirements(requires)
