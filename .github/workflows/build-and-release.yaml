@@ -70,6 +70,7 @@ jobs:
     - name: Build Conda Package
       run: |
         source .miniconda/etc/profile.d/conda.sh
+        conda activate
         conda activate py${{ matrix.python }}
         python -m setuptools_conda build .
     
