@@ -1,14 +1,35 @@
-# setuptools_conda
-<!-- 
-[![Build Status](https://travis-ci.com/chrisjbillington/zprocess.svg?branch=master)](https://travis-ci.com/chrisjbillington/zprocess)
+# setuptools-conda
 
-[![codecov](https://codecov.io/gh/chrisjbillington/zprocess/branch/master/graph/badge.svg)](https://codecov.io/gh/chrisjbillington/zprocess)-->
+Build a conda package from a setuptools project.
 
-Add a `dist_conda` command to your `setup.py`, allowing you to generate conda packages
-with `python setup.py dist_conda`, with as much information as possible determined
-automatically. More powerful than `conda-build`'s `bdist_conda` - this package can build
-for multiple Pythons, allows you to specify any package names that differ between conda
-and PyPI, and converts a wider range of environment markers in dependencies such as:
+To install:
+```bash 
+$ conda install -c cbillington setuptools_conda
+```
+To make a conda package: in your project directory, run:
+```bash
+$ setuptools-conda build .
+```
+
+The resulting conda package will be in `conda_packages/<architecture>/` and can be
+installed with `conda install conda_packages/<architecture>/<pkgfile>` or uploaded to
+your account on anaconda.org with (you'll need to install `anaconda-client`):
+``` bash
+$ anaconda upload conda_packages/<architecture>/<pkgfile>
+```
+
+`setuptools-conda build` installs the project's build dependencies, as declared in a
+`pyproject.toml` or `setup.cfg`, and then runs `python setup.py dist_conda`, where
+`dist_conda` is a distutils command added by `setuptools-conda`. You can also run
+`python setup.py dist_conda` yourself. See below for the full documentation of the
+`setuptools-conda build` command and the `dist_conda` command to `setup.py`.
+
+`setuptools-conda` aims to be as comprehensive as possible, allowing you to generate
+conda packages with `setuptools-conda build` or `python setup.py dist_conda`, with as
+much information as possible determined automatically. More powerful than
+`conda-build`'s `bdist_conda` - this package can build for multiple Python versions,
+allows you to specify any package names that differ between conda and PyPI, and converts
+a wider range of environment markers in dependencies such as:
 
 ```
 INSTALL_REQUIRES = [
@@ -21,47 +42,14 @@ INSTALL_REQUIRES = [
 ]
 ```
 
-To install:
-
-    conda install -c cbillington setuptools_conda
-
-or if you want to install with pip for some reason (though this package is not useful
-outside a conda environment):
-    
-     pip install setuptools_conda
-    
-To build a conda package of your project, add the following to your setup.py:
-
-```python
-try:
-    from setuptools_conda import dist_conda
-    cmdclass = {'dist_conda': dist_conda}
-except ImportError:
-    cmdclass = {}
-
-setup(
-    use_scm_version=True,
-    cmdclass=cmdclass,
-```
-
-The `try: except:` will allow your setup.py to still function normally outside of a conda
-environment when `setuptools_conda` is not installed.
-
-If `setuptools_conda` is installed, then you may build a conda package by running:
-```bash
-$ python setup.py dist_conda
-```
-
-The resulting conda package will be in `conda_packages/<architecture>/` and can be
-installed with `conda install conda_packages/<architecture>/<pkgfile>` or uploaded to
-your account on anaconda.org with (you'll need to install `anaconda-client`):
-```
-anaconda upload conda_packages/<architecture>/<pkgfile>
-```
+In most cases, you should not need to modify a project's code at all to use
+`setuptools_conda`, though if it's your project you're building, you may wish to add
+configurations settings to `setup.cfg` in order to avoid passing them all as command line arguments at build time.
 
 You may customise `dist_conda` to build for multiple Python versions at once, or many
-other options - see the full list of optiond below. Options may be passed in on the
-command line, or in a `setup.cfg` file in the `[dist_conda]` section:
+other options - see the full list of options in the help text of the `dist_conda`
+command below. Options may be passed in on the command line, or in a `setup.cfg` file in
+the `[dist_conda]` section:
 
 ```ini
 [dist_conda]
@@ -86,6 +74,58 @@ setup(
 ```
 
 
+## Documentation of setuptools-conda command
+
+
+```
+$ python -m setuptools_conda -h
+usage: setuptools-conda [-h]
+                        {build} [setup_args [setup_args ...]] project_path
+
+Build a conda package from a setuptools project.
+
+Installs the build requirements of the project with conda, and then runs
+'python setup.py dist_conda', passing remaining arguments. This is similar
+to 'pip wheel' etc in the presence of a pyproject.toml file (but without
+build isolation - the dependencies will be installed in the current
+environment). A typical way to call this script would be as
+'setuptools-conda build [args] .' from the working directory of a project,
+where '[args]' are any additional arguments you want to pass to the
+'dist_conda' command. See 'python setup.py dist_conda -h' for a full list of
+accepted arguments.
+
+Build requirements are searched for in the places in order, stopping on the
+first found:
+
+1. [build-system]/requires in the project's pyproject.toml
+2. [dist_conda]/setup_requires in the project's setup.cfg
+3. [options]/setup_requires in the project's setup.cfg
+
+Additional conda channels to enable to install the build requirements are
+searched for in the following places in order, stopping on the first found:
+
+1. [tools.setuptools-conda]/channels in the project's pyproject.toml
+2. [dist_conda]/channels in the project's setup.cfg
+
+Note that when running 'python setup.py dist_conda', dist_conda will receive
+configuration from setup.cfg with higher priority, which is the opposite of
+what we do here. So use one or the other for configuring build dependencies,
+not both lest the two become inconsistent.
+
+positional arguments:
+  {build}       Action to perform. Only 'build' is presently supported, but more actions
+                            may be added in the future.
+  setup_args    Arguments to pass to setup.py as 'python setup.py dist_conda
+                        [setup_args]'; e.g. '--noarch'
+  project_path  Path to project; e.g. '.' if the project's `setup.py`, `pyproject.toml`
+                        or `setup.cfg` are in the current working directory.
+
+optional arguments:
+  -h, --help    show this help message and exit
+```
+
+## Documentation of dist_conda distutils command
+
 ```
 $ python setup.py dist_conda -h
 
@@ -95,12 +135,8 @@ Options for 'dist_conda' command:
   --pythons                 Minor Python versions to build for, as a comma-
                             separated list e.g. '2.7, 3.6'. Also accepts a
                             list of strings if passed into `setup()` via
-                            `command_options`. Defaults to the list of Python
-                            versions found in package classifiers of the form
-                            'Programming Language :: Python :: 3.7' or the
-                            current Python version if none present. Also
-                            defaults to the current Python version if --build-
-                            input-dist-type=wheel
+                            `command_options`. Defaults to the current Python
+                            version.
   --build-number (-n)       Conda build number. Defaults to zero
   --license-file (-l)       License file to include in the conda package.
                             Defaults to any file in the working directory
@@ -113,10 +149,13 @@ Options for 'dist_conda' command:
                             standard setuptools format, e.g. 'foo >= 2.0;
                             sys_platform=="win32",bar==2.3'. Also accepts a
                             list of strings if passed into `setup()` via
-                            `command_options`. Defaults to the
-                            `setup_requires` argument to `setup()`, and can
-                            therefore be omitted if the build dependencies
-                            when building for conda do not differ.
+                            `command_options`. Defaults to any requirements
+                            listed in a `pyproject.toml` under [build-
+                            system]/requires, or if none, any requirements
+                            listed in the `setup_requires` setuptools
+                            configuration option. Can be be omitted if the
+                            build dependencies when building for conda do not
+                            differ.
   --install-requires        Runtime dependencies, as a comma-separated list in
                             standard setuptools format, e.g. 'foo >= 2.0;
                             sys_platform=="win32",bar==2.3'. Also accepts a
@@ -125,6 +164,12 @@ Options for 'dist_conda' command:
                             `install_requires` argument to `setup()`, and can
                             therefore be omitted if the runtime dependencies
                             when running in conda do not differ.
+  --channels (-c)           Additional channels to search for build
+                            requirements during the build, as a comma-
+                            separated list, or a list of strings if passed in
+                            via setup.py. Defaults to [tools.setuptools-
+                            conda]/channels listed in a `pyproject.toml` file,
+                            if any.
   --conda-name-differences  Mapping of PyPI package names to conda package
                             names, as a comma-separated list of colon-
                             separated names, e.g.
@@ -143,10 +188,10 @@ Options for 'dist_conda' command:
                             `command_options`, this shound instead be a
                             dictionary mapping link script filenames to their
                             contents.
-  --noarch                  Build a platform-independent package. Only set this
-                            if your dependencies are the same on all platforms
-                            and Python versions you support, and you have no
-                            compiled extensions.
+  --noarch                  Build a platform-independent package. Only set
+                            this if your dependencies are the same on all
+                            platforms and Python versions you support, and you
+                            have no compiled extensions.
   --from-wheel              Whether to build a wheel before invoking conda-
                             build. By default setuptools_conda invokes conda-
                             build on an sdist such that any compilation of

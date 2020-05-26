@@ -2,6 +2,7 @@ from pathlib import Path
 from subprocess import call
 import sys
 import argparse
+import textwrap
 
 get_pyproject_toml_entry = None
 get_setup_cfg_entry = None
@@ -42,7 +43,7 @@ def get_channels(proj):
         print("Using extra channels from [tools.setuptools-conda]/channels")
         return channels
     print("No extra channels specified")
-    return []        
+    return []
 
 
 def main():
@@ -51,55 +52,73 @@ def main():
     # that up if necessary.
 
     parser = argparse.ArgumentParser(
-        description="""Install the build requirements of a project with conda, and then
-        run 'python setup.py', passing remaining arguments. This is similar to 'pip
-        wheel' etc in the presence of a pyproject.toml file (but without build isolation
-        - the dependencies will be installed in the current environment). A typical way
-        to call this script would be as 'setuptools-conda . dist_conda [args]' from the
-        working directory of a project, where '[args]' are any additional arguments you
-        want to pass to the 'dist_conda' command. See 'python setup.py dist_conda -h'
-        for a full list of arguments accepted by the 'dist_conda' command.
+        prog='setuptools-conda',
+        description=textwrap.dedent(
+            """\
+            Build a conda package from a setuptools project.
 
-        Build requirements are searched for in the places in order, stopping on the
-        first found:
+            Installs the build requirements of the project with conda, and then runs
+            'python setup.py dist_conda', passing remaining arguments. This is similar
+            to 'pip wheel' etc in the presence of a pyproject.toml file (but without
+            build isolation - the dependencies will be installed in the current
+            environment). A typical way to call this script would be as
+            'setuptools-conda build [args] .' from the working directory of a project,
+            where '[args]' are any additional arguments you want to pass to the
+            'dist_conda' command. See 'python setup.py dist_conda -h' for a full list of
+            accepted arguments.
 
-        1. `[build-system]/requires in the project's pyproject.toml
+            Build requirements are searched for in the places in order, stopping on the
+            first found:
 
-        2. [dist_conda]/setup_requires in the project's setup.cfg
+            1. [build-system]/requires in the project's pyproject.toml
+            2. [dist_conda]/setup_requires in the project's setup.cfg
+            3. [options]/setup_requires in the project's setup.cfg
 
-        3. [options]/setup_requires in the project's setup.cfg
+            Additional conda channels to enable to install the build requirements are
+            searched for in the following places in order, stopping on the first found:
 
-        Additional conda channels to enable to install the build requirements are
-        searched for in the following places in order, stopping on the first found:
+            1. [tools.setuptools-conda]/channels in the project's pyproject.toml
+            2. [dist_conda]/channels in the project's setup.cfg
 
-        1. [tools.setuptools-conda]/channels in the project's pyproject.toml
-
-        2. [dist_conda]/channels in the project's setup.cfg
-
-        Note that when running 'python setup.py dist_conda', dist_conda will receive
-        configuration from setup.cfg with higher priority, which is the opposite of what
-        we do here. So use one or the other for configuring build dependencies, not both
-        lest the two become inconsistent.
-        """
+            Note that when running 'python setup.py dist_conda', dist_conda will receive
+            configuration from setup.cfg with higher priority, which is the opposite of
+            what we do here. So use one or the other for configuring build dependencies,
+            not both lest the two become inconsistent.
+            """
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     parser.add_argument(
-        'project_path',
         action="store",
-        help="""Path to project; e.g. '.' if the project's `setup.py` and any of
-        `pyproject.toml` or `setup.cfg` are in the current working directory.""",
+        choices=['build'],
+        dest="action",
+        help="""Action to perform. Only 'build' is presently supported, but more actions
+            may be added in the future.""",
     )
 
     parser.add_argument(
         action="store",
         dest="setup_args",
-        nargs=argparse.REMAINDER,
-        default=[],
-        help="""Arguments to pass to setup.py as 'python setup.py [setup_args]'; e.g.
-        'dist_conda --noarch'""",
+        nargs="*",
+        help="""Arguments to pass to setup.py as 'python setup.py dist_conda
+        [setup_args]'; e.g. '--noarch'""",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        'project_path',
+        action="store",
+        help="""Path to project; e.g. '.' if the project's `setup.py`, `pyproject.toml`
+        or `setup.cfg` are in the current working directory.""",
+    )
+
+    # We don't actually use this, it's just for help and error-checking on the 'action'
+    # arg. We'll parse setup_args and project_path ourselves, in order to workaround
+    # https://bugs.python.org/issue9334
+    _ = parser.parse_known_args()
+
+    setup_args = sys.argv[2:-1]
+    project_path = sys.argv[-1]
 
     # Bootstrap up our own requirements just to run the functions for getting
     # requirements:
@@ -110,7 +129,7 @@ def main():
     try:
         import distlib
     except ImportError:
-        run(['conda', 'install', '-y',  'distlib'])
+        run(['conda', 'install', '-y', 'distlib'])
 
     global get_pyproject_toml_entry
     global get_setup_cfg_entry
@@ -121,8 +140,8 @@ def main():
         evaluate_requirements,
     )
 
-    proj = Path(args.project_path)
-    
+    proj = Path(project_path)
+
     requires = get_requires(proj)
     requires = evaluate_requirements(requires)
     channels = get_channels(proj)
@@ -134,7 +153,9 @@ def main():
     if requires:
         run(['conda', 'install', '-y',] + chan_args + requires)
 
-    sys.exit(run([sys.executable, 'setup.py'] + args.setup_args, cwd=str(proj),))
+    sys.exit(
+        run([sys.executable, 'setup.py', 'dist_conda'] + setup_args, cwd=str(proj),)
+    )
 
 
 if __name__ == '__main__':
