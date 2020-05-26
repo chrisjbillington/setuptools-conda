@@ -166,11 +166,7 @@ class dist_conda(Command):
                 """\
                 Minor Python versions to build for, as a comma-separated list e.g. '2.7,
                 3.6'. Also accepts a list of strings if passed into `setup()` via
-                `command_options`. Defaults to the list of Python versions found in
-                package classifiers of the form 'Programming Language :: Python :: 3.7'
-                or the current Python version if none present. Also defaults to the
-                current Python version if --build-input-dist-type=wheel
-                """
+                `command_options`. Defaults to the current Python version."""
             ),
         ),
         ('build-number=', 'n', "Conda build number. Defaults to zero"),
@@ -380,12 +376,6 @@ class dist_conda(Command):
             msg = """Can't specify `pythons` if `from_wheel==True"""
             raise ValueError(msg)
 
-        if not (self.pythons or self.noarch or self.from_wheel):
-            for line in self.distribution.get_classifiers():
-                parts = [s.strip() for s in line.split('::')]
-                if len(parts) == 3 and parts[0:2] == ['Programming Language', 'Python']:
-                    if len(parts[2].split('.')) == 2:
-                        self.pythons.append(parts[2])
         if not self.pythons:
             self.pythons = [f'{sys.version_info.major}.{sys.version_info.minor}']
 
