@@ -108,8 +108,7 @@ def condify_requirements(requires, extras_require, name_replacements):
 
 
 def get_setup_cfg_entry(proj, section, key, is_list=True):
-    """Return setup_requires as read from proj/setup.cfg, if any, as evaluated for the
-    current environment"""
+    """Return setup_requires as read from proj/setup.cfg, if any"""
     setup_cfg = Path(proj, 'setup.cfg')
     if not setup_cfg.exists():
         return None
@@ -125,8 +124,7 @@ def get_setup_cfg_entry(proj, section, key, is_list=True):
 
 
 def get_pyproject_toml_entry(proj, *keys):
-    """Return [build-system] requires as read from proj/pyproject.toml, if any, as
-    evaluated for the current environment"""
+    """Return [build-system] requires as read from proj/pyproject.toml, if any"""
     pyproject_toml = Path(proj, 'pyproject.toml')
     if not pyproject_toml.exists():
         return None
