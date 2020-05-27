@@ -57,7 +57,9 @@ def yaml_lines(obj, indent=2):
 def split(s, delimiter=','):
     """Split a string on given delimiter or newlines and return the results stripped of
     whitespace"""
-    return [item.strip() for item in s.replace(delimiter, '\n').splitlines()]
+    return [
+        item.strip() for item in s.replace(delimiter, '\n').splitlines() if item.strip()
+    ]
 
 
 def condify_name(requirement, name_replacements=None):
