@@ -130,7 +130,7 @@ def main():
     # Bootstrap up our own requirements just to run the functions for getting
     # requirements:
     need = ["toml", "distlib"]
-    for name in need:
+    for name in need[:]:
         try:
             __import__(name)
             need.remove(name)
