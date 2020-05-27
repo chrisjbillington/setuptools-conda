@@ -7,9 +7,6 @@ import platform
 
 WINDOWS = platform.system() == 'Windows'
 
-get_pyproject_toml_entry = None
-get_setup_cfg_entry = None
-
 
 def run(cmd, **kwargs):
     print('[running]:', ' '.join(cmd))
@@ -20,36 +17,6 @@ def run(cmd, **kwargs):
     if rc:
         sys.exit(rc)
     return rc
-
-
-def get_requires(proj):
-    requires = get_pyproject_toml_entry(proj, 'build-system', 'requires')
-    if requires is not None:
-        print("Using build requirements from [build-system]/requires")
-        return requires
-    requires = get_setup_cfg_entry(proj, "dist_conda", "setup_requires")
-    if requires is not None:
-        print("Using build requirements from [dist_conda]/setup_requires")
-        return requires
-    requires = get_setup_cfg_entry(proj, "options", "setup_requires")
-    if requires is not None:
-        print("Using build requirements from [options]/setup_requires")
-        return requires
-    print("No build requirements found")
-    requires = []
-
-
-def get_channels(proj):
-    channels = get_pyproject_toml_entry(proj, "tools", "setuptools-conda", "channels")
-    if channels is not None:
-        print("Using extra channels from [tools.setuptools-conda]/channels")
-        return channels
-    channels = get_setup_cfg_entry(proj, "dist_conda", "channels")
-    if channels is not None:
-        print("Using extra channels from [tools.setuptools-conda]/channels")
-        return channels
-    print("No extra channels specified")
-    return []
 
 
 def main():
@@ -76,21 +43,18 @@ def main():
             Build requirements are searched for in the places in order, stopping on the
             first found:
 
-            1. [build-system]/requires in the project's pyproject.toml
+            1. --setup-requires passed in on the command line
             2. [dist_conda]/setup_requires in the project's setup.cfg
-            3. [options]/setup_requires in the project's setup.cfg
+            3. [build-system]/requires in the project's pyproject.toml
+            4. [options]/setup_requires in the project's setup.cfg
 
-            Additional conda channels to enable to install the build requirements are
-            searched for in the following places in order, stopping on the first found:
+            This the same way the 'dist_conda' command gets build dependencies.
 
-            1. [tools.setuptools-conda]/channels in the project's pyproject.toml
-            2. [dist_conda]/channels in the project's setup.cfg
-
-            Note that when running 'python setup.py dist_conda', dist_conda will receive
-            configuration from setup.cfg with higher priority, which is the opposite of
-            what we do here. So use one or the other for configuring build dependencies,
-            not both lest the two become inconsistent.
-            """
+            Additional conda channels to enable to install the build requirements can be
+            passed in with the '--channels' argument or set in [dist_conda]/channels in
+            setup.cfg, any any PyPI:conda name differences can be passed in with the
+            '--conda-name-differences' argument or configured in
+            [dist_conda]/conda_name_differences in setup.cfg."""
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -118,6 +82,67 @@ def main():
         or `setup.cfg` are in the current working directory.""",
     )
 
+    def getargvalue(argname, arglist):
+        try:
+            return arglist[arglist.index(argname) + 1]
+        except IndexError:
+            msg = f"Argument {argname} has no corresponding value"
+            parser.print_usage()
+            raise SystemExit(msg)
+        except ValueError:
+            pass
+        for arg in arglist:
+            if arg.startswith(f'{argname}='):
+                return arg.split(f'{argname}=', 1)[1]
+
+    def get_requires(proj, setup_args):
+        arg = '--setup-requires'
+        requires = getargvalue(arg, setup_args)
+        if requires is not None:
+            print(f"Using build requirements from {arg} command line argument")
+            return split(requires)
+        requires = get_setup_cfg_entry(proj, "dist_conda", "setup_requires")
+        if requires is not None:
+            print("Using build requirements from [dist_conda]/setup_requires")
+            return requires
+        requires = get_pyproject_toml_entry(proj, 'build-system', 'requires')
+        if requires is not None:
+            print("Using build requirements from [build-system]/requires")
+            return requires
+        requires = get_setup_cfg_entry(proj, "options", "setup_requires")
+        if requires is not None:
+            print("Using build requirements from [options]/setup_requires")
+            return requires
+        print("No build requirements")
+        requires = []
+
+    def get_channels(proj, setup_args):
+        arg = '--channels'
+        if arg in setup_args:
+            print(f"Using extra channels from {arg} command line argument")
+            return split(setup_args[setup_args.index(arg) + 1])
+        channels = get_setup_cfg_entry(proj, "dist_conda", "channels")
+        if channels is not None:
+            print("Using extra channels from [dist_conda]/channels")
+            return channels
+        print("No extra channels")
+        return []
+
+    def get_name_differences(proj, setup_args):
+        arg = '--conda-name-differences'
+        if arg in setup_args:
+            print(f"Using name differences from {arg} command line argument")
+            name_differences = setup_args[setup_args.index(arg) + 1]
+            return dict(split(item, ':') for item in split(name_differences))
+        name_differences = get_setup_cfg_entry(
+            proj, "dist_conda", "conda_name_differences"
+        )
+        if name_differences is not None:
+            print("Using extra channels from [tools.setuptools-conda]/channels")
+            return dict(split(item, ':') for item in name_differences)
+        print("No name differences")
+        return {}
+
     # We don't actually use this, it's just for help and error-checking on the 'action'
     # arg. We'll parse setup_args and project_path ourselves, in order to workaround
     # https://bugs.python.org/issue9334
@@ -138,21 +163,22 @@ def main():
     if need:
         run(['conda', 'install', '-y'] + need)
 
-    global get_pyproject_toml_entry
-    global get_setup_cfg_entry
-
     from setuptools_conda.setuptools_conda import (
         get_pyproject_toml_entry,
         get_setup_cfg_entry,
         evaluate_requirements,
-        condify_name
+        condify_name,
+        split,
     )
 
     proj = Path(project_path)
 
-    requires = get_requires(proj)
-    requires = [condify_name(s) for s in evaluate_requirements(requires)]
-    channels = get_channels(proj)
+    requires = get_requires(proj, setup_args)
+    name_differences = get_name_differences(proj, setup_args)
+    requires = [
+        condify_name(s, name_differences) for s in evaluate_requirements(requires)
+    ]
+    channels = get_channels(proj, setup_args)
 
     chan_args = []
     for chan in channels:

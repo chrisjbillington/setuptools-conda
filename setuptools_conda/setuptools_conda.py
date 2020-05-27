@@ -60,10 +60,20 @@ def split(s, delimiter=','):
     return [item.strip() for item in s.replace(delimiter, '\n').splitlines()]
 
 
-def condify_name(name):
-    """Make a package name lowercase and replace underscores with hyphens"""
-    return name.lower().replace('_', '-')
-
+def condify_name(requirement, name_replacements=None):
+    """Given a requirement such as 'foo >= 6' (with no environment markers), replace the
+    package name with its entry, if any, in the dict name_replacements, otherwise make
+    th package name lowercase and replace, underscores with hyphens."""
+    if name_replacements is None:
+        name_replacements = {}
+    splitchars = ' <>=!'
+    name = requirement
+    for char in splitchars:
+        name = name.split(char, 1)[0]
+    if name in name_replacements:
+        return requirement.replace(name, name_replacements[name])
+    else:
+        return name.lower().replace('_', '-')
 
 def condify_requirements(requires, extras_require, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
@@ -78,10 +88,8 @@ def condify_requirements(requires, extras_require, name_replacements):
     for line in requires:
         # Do any name substitutions:
         parts = line.split(';', 1)
-        for pypiname, condaname in name_replacements.items():
-            parts[0] = parts[0].replace(pypiname, condaname)
         # Lower-case the package name:
-        parts[0] = condify_name(parts[0])
+        parts[0] = condify_name(parts[0], name_replacements)
         line = ';'.join(parts)
         # Put any platform/version selector into conda format:
         if ';' in line:
@@ -233,8 +241,9 @@ class dist_conda(Command):
                 'PyQt5:pyqt,beautifulsoup4:beautiful-soup'. Also accepts a dict if
                 passed into `setup()` via `command_options`. Conda packages usually
                 share a name with their PyPI equivalents, but use this option to specify
-                the mapping when they differ. If the only difference is case, no entry 
-                is needed - names will automatically be converted to lower case."""
+                the mapping when they differ. If the only difference is lowercasing or
+                conversion of underscores into hyphens, no entry is needed - these
+                changes are made automatically."""
             ),
         ),
         (
