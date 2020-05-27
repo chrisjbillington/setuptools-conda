@@ -1,6 +1,7 @@
 from pathlib import Path
 from subprocess import call
 import sys
+import os
 import argparse
 import textwrap
 
@@ -120,16 +121,19 @@ def main():
     setup_args = sys.argv[2:-1]
     project_path = sys.argv[-1]
 
+    # Workaround for https://github.com/conda/conda/issues/8693:
+    CONDA = os.environ['CONDA_EXE']
+    
     # Bootstrap up our own requirements just to run the functions for getting
     # requirements:
     try:
         import toml
     except ImportError:
-        run(['conda', 'install', '-y', 'toml'])
+        run([CONDA, 'install', '-y', 'toml'])
     try:
         import distlib
     except ImportError:
-        run(['conda', 'install', '-y', 'distlib'])
+        run([CONDA, 'install', '-y', 'distlib'])
 
     global get_pyproject_toml_entry
     global get_setup_cfg_entry
@@ -151,7 +155,7 @@ def main():
         chan_args += ['--channel', chan]
 
     if requires:
-        run(['conda', 'install', '-y',] + chan_args + requires)
+        run([CONDA, 'install', '-y',] + chan_args + requires)
 
     sys.exit(
         run([sys.executable, 'setup.py', 'dist_conda'] + setup_args, cwd=str(proj),)

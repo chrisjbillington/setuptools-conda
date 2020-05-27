@@ -64,13 +64,11 @@ jobs:
         fi
         source .miniconda/etc/profile.d/conda.sh
         conda activate
-        conda update -n base -c defaults conda
         conda create -n py${{ matrix.python }} python=${{ matrix.python }}
 
     - name: Build Conda Package
       run: |
         source .miniconda/etc/profile.d/conda.sh
-        conda activate
         conda activate py${{ matrix.python }}
         python -m setuptools_conda build .
     
