@@ -4,6 +4,9 @@ import sys
 import os
 import argparse
 import textwrap
+import platform
+
+WINDOWS = platform.system() == 'Windows'
 
 get_pyproject_toml_entry = None
 get_setup_cfg_entry = None
@@ -11,7 +14,10 @@ get_setup_cfg_entry = None
 
 def run(cmd, **kwargs):
     print('[running]:', ' '.join(cmd))
-    rc = call(cmd, **kwargs)
+    # Shell=True is necessary on Windows for calls to conda, otherwise we get mysterious
+    # breakage. But shell=True with a list of args totally changes this function on unix
+    # so we avoid it:
+    rc = call(cmd, shell=WINDOWS, **kwargs)
     if rc:
         sys.exit(rc)
     return rc
@@ -121,19 +127,17 @@ def main():
     setup_args = sys.argv[2:-1]
     project_path = sys.argv[-1]
 
-    # Workaround for https://github.com/conda/conda/issues/8693:
-    CONDA = os.environ['CONDA_EXE']
-    
     # Bootstrap up our own requirements just to run the functions for getting
     # requirements:
-    try:
-        import toml
-    except ImportError:
-        run([CONDA, 'install', '-y', 'toml'])
-    try:
-        import distlib
-    except ImportError:
-        run([CONDA, 'install', '-y', 'distlib'])
+    need = ["toml", "distlib"]
+    for name in need:
+        try:
+            __import__(name)
+            need.remove(name)
+        except ImportError:
+            pass
+    if need:
+        run(['conda', 'install', '-y'] + need)
 
     global get_pyproject_toml_entry
     global get_setup_cfg_entry
@@ -155,7 +159,7 @@ def main():
         chan_args += ['--channel', chan]
 
     if requires:
-        run([CONDA, 'install', '-y',] + chan_args + requires)
+        run(['conda', 'install', '-y',] + chan_args + requires)
 
     sys.exit(
         run([sys.executable, 'setup.py', 'dist_conda'] + setup_args, cwd=str(proj),)
