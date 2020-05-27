@@ -39,11 +39,17 @@ jobs:
           - { os: windows-latest,  python: 3.6,  arch: x86 }
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Ignore Tags
+      if: github.event.ref_type != 'tag'
+      run: git tag -d $(git tag --points-at HEAD)
+
     - if: github.event.ref_type != 'tag'
-      run: |
-        git fetch --prune --unshallow
-        git tag -d $(git tag --points-at HEAD)
+      run: git tag -d $(git tag --points-at HEAD)
 
     - name: Download Conda installer
       run: |

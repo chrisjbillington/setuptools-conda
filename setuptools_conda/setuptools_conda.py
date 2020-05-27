@@ -60,6 +60,11 @@ def split(s, delimiter=','):
     return [item.strip() for item in s.replace(delimiter, '\n').splitlines()]
 
 
+def condify_name(name):
+    """Make a package name lowercase and replace underscores with hyphens"""
+    return name.lower().replace('_', '-')
+
+
 def condify_requirements(requires, extras_require, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
     and `setuptools.Distribution.extras_require` to the format required by conda"""
@@ -76,7 +81,7 @@ def condify_requirements(requires, extras_require, name_replacements):
         for pypiname, condaname in name_replacements.items():
             parts[0] = parts[0].replace(pypiname, condaname)
         # Lower-case the package name:
-        parts[0] = parts[0].lower()
+        parts[0] = condify_name(parts[0])
         line = ';'.join(parts)
         # Put any platform/version selector into conda format:
         if ';' in line:
@@ -278,7 +283,7 @@ class dist_conda(Command):
 
     def initialize_options(self):
         self.VERSION = self.distribution.get_version()
-        self.NAME = self.distribution.get_name()
+        self.NAME = condify_name(self.distribution.get_name())
         self.setup_requires = None
         self.install_requires = None
         self.channels = None
@@ -396,7 +401,7 @@ class dist_conda(Command):
         if self.from_wheel:
             dist = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')][0]
         else:
-            dist = '%s-%s.tar.gz' % (self.NAME, self.VERSION)
+            dist = f'{self.distribution.get_name()}-{self.VERSION}.tar.gz'
 
         with open(os.path.join(self.BUILD_DIR, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()

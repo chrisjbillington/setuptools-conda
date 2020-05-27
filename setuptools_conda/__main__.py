@@ -1,7 +1,6 @@
 from pathlib import Path
 from subprocess import call
 import sys
-import os
 import argparse
 import textwrap
 import platform
@@ -146,12 +145,13 @@ def main():
         get_pyproject_toml_entry,
         get_setup_cfg_entry,
         evaluate_requirements,
+        condify_name
     )
 
     proj = Path(project_path)
 
     requires = get_requires(proj)
-    requires = evaluate_requirements(requires)
+    requires = [condify_name(s) for s in evaluate_requirements(requires)]
     channels = get_channels(proj)
 
     chan_args = []
