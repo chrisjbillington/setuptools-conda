@@ -114,7 +114,7 @@ def main():
             print("Using build requirements from [options]/setup_requires")
             return requires
         print("No build requirements")
-        requires = []
+        return []
 
     def get_channels(proj, setup_args):
         arg = '--channels'
