@@ -439,8 +439,8 @@ class dist_conda(Command):
             },
             'about': {
                 'home': self.HOME,
-                'summary': self.SUMMARY,
-                'license': self.LICENSE,
+                'summary': repr(self.SUMMARY),
+                'license': repr(self.LICENSE),
             },
         }
 
