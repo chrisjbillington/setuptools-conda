@@ -164,6 +164,18 @@ Options for 'dist_conda' command:
                             `install_requires` argument to `setup()`, and can
                             therefore be omitted if the runtime dependencies
                             when running in conda do not differ.
+  --ignore-run-exports      Comma-separated list of conda packages that should
+                            *not* be considered runtime dependencies, even if
+                            they are declared in run_exports of a build
+                            dependence. run_exports declared by build
+                            dependencies are normally automatically considered
+                            run dependencies, for example libraries that were
+                            linked against at the build step - but this can be
+                            undesirable when it creates a brittle dependency
+                            on a specific version of a library which is not
+                            actually required at runtime. Also accepts a list
+                            of strings if passed into `setup()` via
+                            `command_options`.
   --channels (-c)           Additional channels to search for build
                             requirements during the build, as a comma-
                             separated list, or a list of strings if passed in
@@ -178,9 +190,9 @@ Options for 'dist_conda' command:
                             `command_options`. Conda packages usually share a
                             name with their PyPI equivalents, but use this
                             option to specify the mapping when they differ. If
-                            the only difference is case, no entry  is needed -
-                            names will automatically be converted to lower
-                            case.
+                            the only difference is lowercasing or conversion
+                            of underscores into hyphens, no entry is needed -
+                            these changes are made automatically.
   --link-scripts            Comma-separated list of link scripts to include,
                             such as post-link.sh, pre-unlink.bat etc. These
                             will be placed in the recipe directory before

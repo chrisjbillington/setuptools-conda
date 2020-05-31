@@ -223,6 +223,21 @@ class dist_conda(Command):
             ),
         ),
         (
+            'ignore-run-exports=',
+            None,
+            dedent(
+                """\
+                Comma-separated list of conda packages that should *not* be considered
+                runtime dependencies, even if they are declared in run_exports of a
+                build dependency. run_exports declared by build dependencies are
+                normally automatically considered run dependencies, for example
+                libraries that were linked against at build-time - but this can be
+                undesirable when it creates a brittle dependency on a specific version
+                of a library which is not actually required at runtime. Also accepts a
+                list of strings if passed into `setup()` via `command_options`."""
+            ),
+        ),
+        (
             'channels=',
             'c',
             dedent(
@@ -297,6 +312,7 @@ class dist_conda(Command):
         self.NAME = condify_name(self.distribution.get_name())
         self.setup_requires = None
         self.install_requires = None
+        self.ignore_run_exports = []
         self.channels = None
         self.HOME = self.distribution.get_url()
         self.LICENSE = self.distribution.get_license()
@@ -363,6 +379,9 @@ class dist_conda(Command):
             self.RUN_REQUIRES = condify_requirements(
                 self.install_requires, {}, self.conda_name_differences
             )
+
+        if isinstance(self.ignore_run_exports, str):
+            self.ignore_run_exports = split(self.ignore_run_exports)
 
         if self.channels is None:
             self.channels = get_pyproject_toml_entry(
@@ -448,6 +467,8 @@ class dist_conda(Command):
             package_details['build']['noarch'] = 'python'
         if self.build_string is not None:
             package_details['build']['string'] = self.build_string
+        if self.ignore_run_exports:
+            package_details['build']['ignore_run_exports'] = self.ignore_run_exports
         if self.distribution.entry_points is not None:
             console_scripts = self.distribution.entry_points.get('console_scripts', [])
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
