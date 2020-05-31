@@ -77,16 +77,11 @@ def condify_name(requirement, name_replacements=None):
     else:
         return name.lower().replace('_', '-')
 
-def condify_requirements(requires, extras_require, name_replacements):
+def condify_requirements(requires, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
     and `setuptools.Distribution.extras_require` to the format required by conda"""
     result = []
     requires = requires.copy()
-    for qualifier, requirements in extras_require.items():
-        qualifier = qualifier.replace(':', '')
-        for requirement in requirements:
-            requires.append('%s; %s' % (requirement, qualifier))
-
     for line in requires:
         # Do any name substitutions:
         parts = line.split(';', 1)
@@ -358,20 +353,18 @@ class dist_conda(Command):
             if setup_requires is None:
                 setup_requires = self.distribution.setup_requires
             self.SETUP_REQUIRES = condify_requirements(
-                setup_requires, {}, self.conda_name_differences
+                setup_requires, self.conda_name_differences
             )
         else:
             if isinstance(self.setup_requires, str):
                 self.setup_requires = split(self.setup_requires)
             self.SETUP_REQUIRES = condify_requirements(
-                self.setup_requires, {}, self.conda_name_differences
+                self.setup_requires, self.conda_name_differences
             )
 
         if self.install_requires is None:
             self.RUN_REQUIRES = condify_requirements(
-                self.distribution.install_requires,
-                self.distribution.extras_require,
-                self.conda_name_differences,
+                self.distribution.install_requires, self.conda_name_differences,
             )
         else:
             if isinstance(self.install_requires, str):
