@@ -167,10 +167,10 @@ Options for 'dist_conda' command:
   --ignore-run-exports      Comma-separated list of conda packages that should
                             *not* be considered runtime dependencies, even if
                             they are declared in run_exports of a build
-                            dependence. run_exports declared by build
+                            dependency. run_exports declared by build
                             dependencies are normally automatically considered
                             run dependencies, for example libraries that were
-                            linked against at the build step - but this can be
+                            linked against at build-time - but this can be
                             undesirable when it creates a brittle dependency
                             on a specific version of a library which is not
                             actually required at runtime. Also accepts a list
@@ -215,4 +215,14 @@ Options for 'dist_conda' command:
                             with the system configuration. In this case,
                             setuptools_conda will only produce a conda package
                             for the current Python version.
+  --from-downloaded-wheel   Whether to avoid local building at all and
+                            download a wheel from PyPI before invoking conda-
+                            build. For projects with tricky build environment
+                            requirements, this can be a way to essentially
+                            repackage an existing wheel without having to any
+                            building at all. Requires that the exact version
+                            as understood by setuptools is availalble on PyPI
+                            as a wheel. In this case, setuptools_conda will
+                            only produce a conda package for the current
+                            Python version.
 ```

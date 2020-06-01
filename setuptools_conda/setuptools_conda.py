@@ -295,6 +295,20 @@ class dist_conda(Command):
                 Python version."""
             ),
         ),
+        (
+            'from-downloaded-wheel',
+            None,
+            dedent(
+                """\
+                Whether to avoid local building at all and download a wheel from PyPI
+                before invoking conda-build. For projects with tricky build environment
+                requirements, this can be a way to essentially repackage an existing
+                wheel without having to any building at all. Requires that the exact
+                version as understood by setuptools is availalble on PyPI as a wheel. In
+                this case, setuptools_conda will only produce a conda package for the
+                current Python version."""
+            ),
+        ),
     ]
 
     BUILD_DIR = 'conda_build'
@@ -329,6 +343,7 @@ class dist_conda(Command):
         self.link_scripts = {}
         self.noarch = False
         self.from_wheel = False
+        self.from_downloaded_wheel = False
 
     def finalize_options(self):
         if self.license_file is None:
@@ -370,7 +385,7 @@ class dist_conda(Command):
             if isinstance(self.install_requires, str):
                 self.install_requires = split(self.install_requires)
             self.RUN_REQUIRES = condify_requirements(
-                self.install_requires, {}, self.conda_name_differences
+                self.install_requires, self.conda_name_differences
             )
 
         if isinstance(self.ignore_run_exports, str):
@@ -398,9 +413,10 @@ class dist_conda(Command):
             msg = """Can't specify `pythons` and `noarch` simultaneously"""
             raise ValueError(msg)
 
-        if self.pythons and self.from_wheel:
-            msg = """Can't specify `pythons` if `from_wheel==True"""
-            raise ValueError(msg)
+        if self.pythons and (self.from_wheel or self.from_downloaded_wheel):
+            msg = """Can't specify `pythons` if `from_wheel or `from_downloaded_wheel`
+                is set"""
+            raise ValueError(' '.join(msg.split()))
 
         if not self.pythons:
             self.pythons = [f'{sys.version_info.major}.{sys.version_info.minor}']
@@ -411,17 +427,32 @@ class dist_conda(Command):
         shutil.rmtree('build', ignore_errors=True)
         os.makedirs(self.RECIPE_DIR)
 
-        # Run sdist or bdist_wheel to make a source tarball or wheel in the recipe dir:
-        cmd = [sys.executable, 'setup.py']
-        if self.from_wheel:
-            cmd += ['bdist_wheel']
+        if self.from_downloaded_wheel:
+            # Download a wheel:
+            cmd = [
+                'pip',
+                'download',
+                '--only-binary=:all:',
+                '--no-deps',
+                '--dest',
+                self.BUILD_DIR,
+                f'{self.NAME}=={self.VERSION}',
+            ]
+            check_call(cmd)
+
         else:
-            cmd += ['sdist', '--formats=gztar']
-        cmd += ['--dist-dir=' + self.BUILD_DIR]
+            # Run sdist or bdist_wheel to make a source tarball or wheel in the recipe
+            # dir:
+            cmd = [sys.executable, 'setup.py']
+            if self.from_wheel:
+                cmd += ['bdist_wheel']
+            else:
+                cmd += ['sdist', '--formats=gztar']
+            cmd += ['--dist-dir=' + self.BUILD_DIR]
 
         check_call(cmd)
 
-        if self.from_wheel:
+        if self.from_wheel or self.from_downloaded_wheel:
             dist = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')][0]
         else:
             dist = f'{self.distribution.get_name()}-{self.VERSION}.tar.gz'
@@ -434,7 +465,7 @@ class dist_conda(Command):
         with open(build_config_yaml, 'w') as f:
             f.write('\n'.join(yaml_lines({'python': self.pythons})))
 
-        pip_target = dist if self.from_wheel else '.'
+        pip_target = dist if (self.from_wheel or self.from_downloaded_wheel) else '.'
 
         # Recipe:
         package_details = {
