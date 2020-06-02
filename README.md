@@ -197,7 +197,7 @@ optional arguments:
                         dist_conda -h'
   ```
 
-## Documentation of dist_conda distutils command
+## Help text of `python setup.py dist_conda` distutils command
 
 ```
 $ python setup.py dist_conda -h
