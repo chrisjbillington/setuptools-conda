@@ -19,10 +19,16 @@ $ anaconda upload conda_packages/<architecture>/<pkgfile>
 ```
 
 `setuptools-conda build` installs the project's build dependencies, as declared in a
-`pyproject.toml` or `setup.cfg`, and then runs `python setup.py dist_conda`, where
-`dist_conda` is a distutils command added by `setuptools-conda`. You can also run
+`pyproject.toml`, `setup.cfg` or `setup.py`, and then runs `python setup.py dist_conda`,
+where `dist_conda` is a distutils command added by `setuptools-conda`. You can also run
 `python setup.py dist_conda` yourself. See below for the full documentation of the
 `setuptools-conda build` command and the `dist_conda` command to `setup.py`.
+
+`setuptools-conda` also provides a command `setuptools-conda install-requirements` that
+will install a project or projects build and runtime requirements with conda. This
+allows one to then make an editable install with `pip install --no-deps -e .` whilst
+ensuring all of a project's dependencies are without `pip` installing missing
+dependencies from PyPI into a conda environment, which can be problematic.
 
 `setuptools-conda` aims to be as comprehensive as possible, allowing you to generate
 conda packages with `setuptools-conda build` or `python setup.py dist_conda`, with as
@@ -44,7 +50,8 @@ INSTALL_REQUIRES = [
 
 In most cases, you should not need to modify a project's code at all to use
 `setuptools_conda`, though if it's your project you're building, you may wish to add
-configurations settings to `setup.cfg` in order to avoid passing them all as command line arguments at build time.
+configurations settings to `setup.cfg` in order to avoid passing them all as command
+line arguments at build time.
 
 You may customise `dist_conda` to build for multiple Python versions at once, or many
 other options - see the full list of options in the help text of the `dist_conda`
@@ -74,55 +81,121 @@ setup(
 ```
 
 
-## Documentation of setuptools-conda command
+## Help text of `setuptools-conda`
 
 
 ```
-$ python -m setuptools_conda -h
-usage: setuptools-conda [-h]
-                        {build} [setup_args [setup_args ...]] project_path
-
-Build a conda package from a setuptools project.
-
-Installs the build requirements of the project with conda, and then runs
-'python setup.py dist_conda', passing remaining arguments. This is similar
-to 'pip wheel' etc in the presence of a pyproject.toml file (but without
-build isolation - the dependencies will be installed in the current
-environment). A typical way to call this script would be as
-'setuptools-conda build [args] .' from the working directory of a project,
-where '[args]' are any additional arguments you want to pass to the
-'dist_conda' command. See 'python setup.py dist_conda -h' for a full list of
-accepted arguments.
-
-Build requirements are searched for in the places in order, stopping on the
-first found:
-
-1. [build-system]/requires in the project's pyproject.toml
-2. [dist_conda]/setup_requires in the project's setup.cfg
-3. [options]/setup_requires in the project's setup.cfg
-
-Additional conda channels to enable to install the build requirements are
-searched for in the following places in order, stopping on the first found:
-
-1. [tools.setuptools-conda]/channels in the project's pyproject.toml
-2. [dist_conda]/channels in the project's setup.cfg
-
-Note that when running 'python setup.py dist_conda', dist_conda will receive
-configuration from setup.cfg with higher priority, which is the opposite of
-what we do here. So use one or the other for configuring build dependencies,
-not both lest the two become inconsistent.
+$ python setuptools-conda -h
+usage: setuptools-conda [-h] {build,install-requirements} ...
 
 positional arguments:
-  {build}       Action to perform. Only 'build' is presently supported, but more actions
-                            may be added in the future.
+  {build,install-requirements}
+                        Action to perform, either "build" or "install-requirements". For
+                        help on arguments accepted by a given command, run
+                        'setuptools-conda <command> -h'
+    build               Build a conda package from a setuptools project.
+
+                        Installs the build requirements of the project with conda, and
+                        then runs 'python setup.py dist_conda', passing remaining
+                        arguments. This is similar to 'pip wheel' etc in the presence of
+                        a pyproject.toml file (but without build isolation - the
+                        dependencies will be installed in the current environment). A
+                        typical way to call this script would be as 'setuptools-conda
+                        build [args] .' from the working directory of a project, where
+                        '[args]' are any additional arguments you want to pass to the
+                        'dist_conda' command. See 'python setup.py dist_conda -h' for a
+                        full list of accepted arguments.
+
+                        Build requirements are searched for in the places in order,
+                        stopping on the first found:
+
+                        1. --setup-requires passed in on the command line
+                        2. [dist_conda]/setup_requires in the project's setup.cfg
+                        3. [build-system]/requires in the project's pyproject.toml
+                        4. [options]/setup_requires in the project's setup.cfg
+
+                        This the same way the 'dist_conda' command gets build
+                        dependencies.
+
+                        Additional conda channels to enable to install the build
+                        requirements can be passed in with the '--channels' argument or
+                        set in [dist_conda]/channels in setup.cfg, any any PyPI:conda
+                        name differences can be passed in with the
+                        '--conda-name-differences' argument or configured in
+                        [dist_conda]/conda_name_differences in setup.cfg.
+    install-requirements
+
+                        Install the requirements of the given project(s). This will
+                        install both the build and runtime requirements of all packages
+                        given. Build dependencies are determined from the same sources
+                        as the 'build' command.
+
+                        Runtime requirements are searched for in the places in order,
+                        stopping on the first found:
+
+                        1. --install-requires passed in on the command line
+                        2. [dist_conda]/install_requires in the project's setup.cfg
+                        4. [options]/install_requires in the project's setup.cfg or
+                           setup.py (obtained via 'python setup.py egg_info')
+
+                        any any PyPI:conda name differences can be passed in with the
+                        '--conda-name-differences' argument or configured in
+                        [dist_conda]/conda_name_differences in setup.cfg.
+
+                        Any runtime requirements that themselves are in the list of
+                        projects to install requirements for will not be installed. This
+                        is intended to facilitate running `pip install -e --no-deps` to
+                        create editable installs for a set of projects, for which one
+                        would not want to install those projects normally in addition to
+                        in editable mode.
+
+optional arguments:
+  -h, --help            show this help message and exit
+```
+
+## Help text of `setuptools-conda build` command
+
+```
+$ python setuptools-conda build -h
+usage: setuptools-conda build [-h] [setup_args [setup_args ...]] project_path
+
+positional arguments:
   setup_args    Arguments to pass to setup.py as 'python setup.py dist_conda
-                        [setup_args]'; e.g. '--noarch'
-  project_path  Path to project; e.g. '.' if the project's `setup.py`, `pyproject.toml`
-                        or `setup.cfg` are in the current working directory.
+                [setup_args]'; e.g. '--noarch'
+  project_path  Path to project; e.g. '.' if the project's `setup.py`,
+                `pyproject.toml` or `setup.cfg` are in the current working
+                directory.
 
 optional arguments:
   -h, --help    show this help message and exit
 ```
+
+## Help text of `setuptools-conda install-requirements` command
+```
+$ python setuptools-conda install-requirements -h
+usage: setuptools-conda install-requirements [-h]
+                                             [--setup-requires SETUP_REQUIRES]
+                                             [--install-requires INSTALL_REQUIRES]
+                                             [--conda-name-differences CONDA_NAME_DIFFERENCES]
+                                             [--channels CHANNELS]
+                                             [projects [projects ...]]
+
+positional arguments:
+  projects              Project directories to install dependencies for
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --setup-requires SETUP_REQUIRES
+                        Build requirements override. 'See python setup.py dist_conda -h'
+  --install-requires INSTALL_REQUIRES
+                        Install requirements override. 'See python setup.py dist_conda
+                        -h'
+  --conda-name-differences CONDA_NAME_DIFFERENCES
+                        PyPI:conda name differences override. 'See python setup.py
+                        dist_conda -h'"
+  --channels CHANNELS   Channels to search for build requires. 'See python setup.py
+                        dist_conda -h'
+  ```
 
 ## Documentation of dist_conda distutils command
 
