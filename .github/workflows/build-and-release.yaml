@@ -118,7 +118,7 @@ jobs:
         anaconda \
           --token ${{ secrets.ANACONDA_API_TOKEN }} \
           upload \
-          --user cbillington \
+          --user labscript-suite \
           --label test \
           conda_packages/*/*
           
@@ -130,5 +130,5 @@ jobs:
         anaconda \
           --token ${{ secrets.ANACONDA_API_TOKEN }} \
           upload \
-          --user cbillington \
+          --user labscript-suite \
           conda_packages/*/*
