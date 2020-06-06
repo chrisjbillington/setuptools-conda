@@ -358,12 +358,16 @@ def main():
     for chan in channels:
         chan_args += ['--channel', chan]
 
+    # Remove duplicates:
+    all_build_requires = list(set(all_build_requires))
+
     # Install them:
     if all_build_requires:
         run_conda_cmd(['conda', 'install', '-y'] + chan_args + all_build_requires)
 
     if CMD == 'build':
         print("\nBuilding...")
+        proj = Path(args.projects[0])
         sys.exit(
             run([sys.executable, 'setup.py', 'dist_conda'] + setup_args, cwd=str(proj))
         )
@@ -372,6 +376,7 @@ def main():
     all_run_requires = []
     project_names = []
     for project_path in args.projects:
+        proj = Path(project_path)
         project_name = get_project_name(proj)
         project_names.append(project_name)
         name_differences = get_name_differences(proj, additional_args)
