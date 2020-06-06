@@ -255,6 +255,11 @@ def main():
         get_output([sys.executable, 'setup.py', 'egg_info'], cwd=str(proj))
         requires_file = Path(proj, f'{name.replace("-", "_")}.egg-info', 'requires.txt')
         requires = requires_file.read_text().splitlines()
+        # Ignore extras sections:
+        for i, item in enumerate(requires):
+            if not item.strip() or item.startswith('['):
+                requires = requires[:i]
+                break
         if requires:
             print("Using run requirements from egg_info")
             return requires
@@ -378,11 +383,11 @@ def main():
         all_run_requires.extend(run_requires)
 
     # Remove exact duplicates:
-    run_requires = list(set(run_requires))
+    all_run_requires = list(set(all_run_requires))
 
     # Remove any projects we're installing requirements *for* from the list of
     # requirements to install:
-    remove_projects(run_requires, project_names)
+    remove_projects(all_run_requires, project_names)
 
     # Install them:
     if all_run_requires:
