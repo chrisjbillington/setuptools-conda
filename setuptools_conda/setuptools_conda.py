@@ -14,7 +14,7 @@ import distlib.markers
 
 
 if not os.getenv('CONDA_PREFIX'):
-    msg = "You cannot use setuptools_conda outside of a conda environment"
+    msg = "You cannot use setuptools-conda outside of a conda environment"
     raise EnvironmentError(msg)
 
 
@@ -102,7 +102,7 @@ def condify_requirements(requires, name_replacements):
             line = line.replace(' ' + operator, operator)
             line = line.replace(operator + ' ', operator)
         if '~=' in line:
-            raise ValueError("setuptools_conda does not support '~= version operator'")
+            raise ValueError("setuptools-conda does not support '~= version operator'")
 
         # Replace Python version variable with conda equivalent:
         line = line.replace('python_version', 'py')
@@ -286,12 +286,12 @@ class dist_conda(Command):
             dedent(
                 """\
                 Whether to build a wheel before invoking conda-build. By default
-                setuptools_conda invokes conda-build on an sdist such that any
+                setuptools-conda invokes conda-build on an sdist such that any
                 compilation of extensions will be done in the conda build environment.
                 However, if your extensions are not able to be compiled with conda's
                 compiler configuration, you might set this option to pass conda-build a
                 wheel that has been pre-compiled with the system configuration. In this
-                case, setuptools_conda will only produce a conda package for the current
+                case, setuptools-conda will only produce a conda package for the current
                 Python version."""
             ),
         ),
@@ -305,7 +305,7 @@ class dist_conda(Command):
                 requirements, this can be a way to essentially repackage an existing
                 wheel without having to any building at all. Requires that the exact
                 version as understood by setuptools is availalble on PyPI as a wheel. In
-                this case, setuptools_conda will only produce a conda package for the
+                this case, setuptools-conda will only produce a conda package for the
                 current Python version."""
             ),
         ),

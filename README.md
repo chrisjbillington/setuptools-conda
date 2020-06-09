@@ -4,7 +4,7 @@ Build a conda package from a setuptools project.
 
 To install:
 ```bash 
-$ conda install -c cbillington setuptools_conda
+$ conda install -c cbillington setuptools-conda
 ```
 To make a conda package: in your project directory, run:
 ```bash
@@ -49,7 +49,7 @@ INSTALL_REQUIRES = [
 ```
 
 In most cases, you should not need to modify a project's code at all to use
-`setuptools_conda`, though if it's your project you're building, you may wish to add
+`setuptools-conda`, though if it's your project you're building, you may wish to add
 configurations settings to `setup.cfg` in order to avoid passing them all as command
 line arguments at build time.
 
@@ -278,7 +278,7 @@ Options for 'dist_conda' command:
                             platforms and Python versions you support, and you
                             have no compiled extensions.
   --from-wheel              Whether to build a wheel before invoking conda-
-                            build. By default setuptools_conda invokes conda-
+                            build. By default setuptools-conda invokes conda-
                             build on an sdist such that any compilation of
                             extensions will be done in the conda build
                             environment. However, if your extensions are not
@@ -286,7 +286,7 @@ Options for 'dist_conda' command:
                             configuration, you might set this option to pass
                             conda-build a wheel that has been pre-compiled
                             with the system configuration. In this case,
-                            setuptools_conda will only produce a conda package
+                            setuptools-conda will only produce a conda package
                             for the current Python version.
   --from-downloaded-wheel   Whether to avoid local building at all and
                             download a wheel from PyPI before invoking conda-
@@ -295,7 +295,7 @@ Options for 'dist_conda' command:
                             repackage an existing wheel without having to any
                             building at all. Requires that the exact version
                             as understood by setuptools is availalble on PyPI
-                            as a wheel. In this case, setuptools_conda will
+                            as a wheel. In this case, setuptools-conda will
                             only produce a conda package for the current
                             Python version.
 ```
