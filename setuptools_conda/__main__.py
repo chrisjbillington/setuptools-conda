@@ -4,9 +4,21 @@ import sys
 import argparse
 import textwrap
 import platform
+import re
 
 WINDOWS = platform.system() == 'Windows'
-
+extras_regex = re.compile(r"""
+    ^               # Match start of string
+    [^\[\n]*        # Match any character not in the following set, zero or more times:
+                    #       [
+                    #       \n
+    (?:             # Start non capturing group
+        \[          # Match "[" character
+        (.*)        # Capturing group, match any character zero or mroe times
+        \]          # Match "]" character
+    )?              # End non capturing group, match zero or one times
+    $               # End of string
+    """, re.VERBOSE|re.MULTILINE)
 
 def main():
     # Since setuptools_conda is self-hosting, it needs toml and distlib to read its own
@@ -242,7 +254,7 @@ def main():
         print("No build requirements")
         return []
 
-    def get_run_requires(proj, args, name):
+    def get_run_requires(proj, args, name, extras_name=None):
         arg = 'install-requires'
         requires = getargvalue(arg, args)
         if requires is not None:
@@ -255,16 +267,48 @@ def main():
         get_output([sys.executable, 'setup.py', 'egg_info'], cwd=str(proj))
         requires_file = Path(proj, f'{name.replace("-", "_")}.egg-info', 'requires.txt')
         requires = requires_file.read_text().splitlines()
-        # Ignore extras sections:
-        for i, item in enumerate(requires):
-            if not item.strip() or item.startswith('['):
-                requires = requires[:i]
-                break
+        # Parse requirements file
+        current_group = ""
+        groups = {current_group:[]}
+        for item in requires:
+            item = item.strip()
+            if item.startswith('['):
+                current_group = item
+                groups.setdefault(current_group, [])
+            elif item:
+                groups[current_group].append(item)
+
+        # Extract base requirements + any in the extras group if requested
+        requires = groups[""]
+        if extras_name is not None and extras_name in groups:
+            requires += groups[extras_name]
         if requires:
             print("Using run requirements from egg_info")
             return requires
         print("No run requirements")
         return []
+
+    def get_extras_name(project_path):
+        proj = Path(project_path)
+        if proj.exists():
+            # Assume no extras modifier is present if the folder exists.
+            # This catches the case where the project folder actually does end with
+            #   "[<characters>]"
+            return project_path, None
+            
+        # Extract the last component of the path
+        last = proj.parts[-1]
+
+        # Is there a [<extras name>] added on the end?
+        extras_name = None
+        m = extras_regex.match(last)
+        if m is not None:
+            extras_name = m.groups()[0]
+        if extras_name is not None:
+            # strip this from the project path
+            project_path = project_path[:-(2+len(extras_name))]
+
+        return project_path, extras_name
 
     def get_channels(proj, args):
         arg = 'channels'
@@ -376,11 +420,12 @@ def main():
     all_run_requires = []
     project_names = []
     for project_path in args.projects:
+        project_path, extras_name = get_extras_name(project_path)
         proj = Path(project_path)
         project_name = get_project_name(proj)
         project_names.append(project_name)
         name_differences = get_name_differences(proj, additional_args)
-        run_requires = get_run_requires(proj, additional_args, project_name)
+        run_requires = get_run_requires(proj, additional_args, project_name, extras_name)
         run_requires = [
             condify_name(s, name_differences)
             for s in evaluate_requirements(run_requires)
