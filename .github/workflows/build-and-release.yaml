@@ -63,7 +63,7 @@ jobs:
             CONDA_INSTALLER=Miniconda3-latest-MacOSX-x86_64.sh
         fi
         curl -LO "https://repo.continuum.io/miniconda/$CONDA_INSTALLER" 
-        echo "::set-env name=CONDA_INSTALLER::$CONDA_INSTALLER"
+        echo "CONDA_INSTALLER=$CONDA_INSTALLER" >> $GITHUB_ENV
 
     - name: Build Conda package (Unix)
       if: runner.os != 'Windows'
