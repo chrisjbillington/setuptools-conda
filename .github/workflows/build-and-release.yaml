@@ -52,46 +52,30 @@ jobs:
       if: github.event.ref_type != 'tag'
       run: git tag -d $(git tag --points-at HEAD)
 
-    - if: github.event.ref_type != 'tag'
-      run: git tag -d $(git tag --points-at HEAD)
+    - name: Install Miniconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-update-conda: true
+        python-version: ${{ matrix.python }}
+        architecture: ${{ matrix.arch }}
+        miniconda-version: "latest"
 
-    - name: Download Conda installer
-      run: |
-        if [ $RUNNER_OS == Windows ] && [ ${{ matrix.arch }} == x64 ]; then
-            CONDA_INSTALLER=Miniconda3-latest-Windows-x86_64.exe
-        elif [ $RUNNER_OS == Windows ]; then
-            CONDA_INSTALLER=Miniconda3-latest-Windows-x86.exe
-        elif [ $RUNNER_OS == Linux ]; then
-            CONDA_INSTALLER=Miniconda3-latest-Linux-x86_64.sh
-        else
-            CONDA_INSTALLER=Miniconda3-latest-MacOSX-x86_64.sh
-        fi
-        curl -LO "https://repo.continuum.io/miniconda/$CONDA_INSTALLER" 
-        echo "CONDA_INSTALLER=$CONDA_INSTALLER" >> $GITHUB_ENV
-
-    - name: Build Conda package (Unix)
+    - name: Conda package (Unix)
       if: runner.os != 'Windows'
+      shell: bash -l {0}
       run: |
-        bash "$CONDA_INSTALLER" -b -p .miniconda
-        source .miniconda/etc/profile.d/conda.sh
-        conda activate
-        conda update -n base -c defaults conda
-        conda create -n py${{ matrix.python }} python=${{ matrix.python }}
-        conda activate py${{ matrix.python }}
-        python -m setuptools_conda build .
+        conda install -c cbillington setuptools-conda
+        setuptools-conda build .
 
-    - name: Build Conda Package (Windows)
+    - name: Conda Package (Windows)
       if: runner.os == 'Windows'
-      shell: cmd
+      shell: cmd /C CALL {0}
       run: |
-        %CONDA_INSTALLER% /S /D=%CD%\.miniconda && ^
-        .miniconda\Scripts\activate && ^
-        conda update -n base -c defaults conda && ^
-        conda create -n py${{ matrix.python }} python=${{ matrix.python }} && ^
-        conda activate py${{ matrix.python }} && ^
-        python -m setuptools_conda build .
-    
-    - uses: actions/upload-artifact@v1
+        conda install -c cbillington setuptools-conda && ^
+        setuptools-conda build .
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
       with:
         name: conda_packages
         path: ./conda_packages
