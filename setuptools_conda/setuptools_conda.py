@@ -65,7 +65,7 @@ def split(s, delimiter=','):
 def condify_name(requirement, name_replacements=None):
     """Given a requirement such as 'foo >= 6' (with no environment markers), replace the
     package name with its entry, if any, in the dict name_replacements, otherwise make
-    th package name lowercase and replace, underscores with hyphens."""
+    the package name lowercase and replace, underscores with hyphens."""
     if name_replacements is None:
         name_replacements = {}
     splitchars = ' <>=!'
@@ -75,7 +75,8 @@ def condify_name(requirement, name_replacements=None):
     if name in name_replacements:
         return requirement.replace(name, name_replacements[name])
     else:
-        return name.lower().replace('_', '-')
+        return requirement.replace(name, name.lower().replace("_", "-"))
+
 
 def condify_requirements(requires, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
