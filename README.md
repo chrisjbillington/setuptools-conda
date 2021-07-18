@@ -81,6 +81,19 @@ setup(
 ```
 
 
+## build and install `setuptools-conda` from source
+
+`setuptools-conda` can build a conda package of itself. To make a conda package for your
+Python version and platform, in an activated conda environment, run the following:
+
+``` bash
+$ git clone https://github.com/chrisjbillington/setuptools-conda
+$ cd setuptools-conda/
+$ python -m setuptools_conda build .
+$ conda install conda_packages/<your_architecture>/setuptools-conda-<version>-<build>.tar.bz2
+```
+
+
 ## Help text of `setuptools-conda`
 
 
