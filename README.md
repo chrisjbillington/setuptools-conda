@@ -2,9 +2,20 @@
 
 Build a conda package from a setuptools project.
 
+## Table of Contents
+
+   * [Installation and usage](#installation-and-usage)
+   * [build and install setuptools-conda from source](#build-and-install-setuptools-conda-from-source)
+   * [Help text of setuptools-conda](#help-text-of-setuptools-conda)
+   * [Help text of setuptools-conda build command](#help-text-of-setuptools-conda-build-command)
+   * [Help text of setuptools-conda install-requirements command](#help-text-of-setuptools-conda-install-requirements-command)
+   * [Help text of python setup.py dist_conda distutils command](#help-text-of-python-setuppy-dist_conda-distutils-command)
+
+## Installation and usage
+
 To install:
 ```bash 
-$ conda install -c cbillington setuptools-conda
+$ conda install -c labscript-suite setuptools-conda
 ```
 To make a conda package: in your project directory, run:
 ```bash
