@@ -19,13 +19,18 @@ if not os.getenv('CONDA_PREFIX'):
 
 
 # Mapping of supported Python environment markers usable in setuptools requirements
-# lists to conda bools. We will translate for example 'sys_platform==win32' to [win32],
+# lists to conda bools. We will translate for example 'sys_platform==win32' to [win],
 # which is the conda equivalent. `python_version` is handled separately.
 PLATFORM_VAR_TRANSLATION = {
     'sys_platform': {'win32': 'win', 'linux': 'linux', 'darwin': 'osx'},
     'platform_system': {'Windows': 'win', 'Linux': 'linux', 'Darwin': 'osx'},
     'os_name': {'nt': 'win', 'posix': 'unix'},
-    'platform_machine': {'x86_64': 'x86_64'},
+    'platform_machine': {
+        'x86_64': 'x86_64',
+        'AMD64': 'x86_64',
+        'arm64': 'arm64',
+        'i386': 'x86',
+    },
 }
 
 
