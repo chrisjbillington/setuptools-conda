@@ -19,6 +19,7 @@ def main():
 
     subparsers = parser.add_subparsers(
         dest="command",
+        required=True,
         help=textwrap.dedent(
             """\
                         Action to perform, either "build" or "install-requirements". For
