@@ -8,6 +8,8 @@ from textwrap import dedent
 import hashlib
 from pathlib import Path
 import configparser
+import re
+import itertools
 
 import toml
 import distlib.markers
@@ -67,60 +69,155 @@ def split(s, delimiter=','):
     ]
 
 
-def condify_name(requirement, name_replacements=None):
-    """Given a requirement such as 'foo >= 6' (with no environment markers), replace the
-    package name with its entry, if any, in the dict name_replacements, otherwise make
-    the package name lowercase and replace, underscores with hyphens."""
-    if name_replacements is None:
-        name_replacements = {}
-    splitchars = ' <>=!'
+def split_requirement(requirement):
+    """split a requirements line such as "foo<7,>2; sys_platform == 'win32'" into
+    ("foo", "<7,>2", "sys_platform == 'win32'")"""
+    splitchars =' \t~<>=!;'
     name = requirement
     for char in splitchars:
-        name = name.split(char, 1)[0]
-    if name in name_replacements:
-        return requirement.replace(name, name_replacements[name])
+        name = name.split(char, 1)[0].strip()
+    rest = requirement[len(name) :].strip()
+    if not rest:
+        version_specifiers = env_marker = ""
+    elif ';' in rest:
+        version_specifiers, env_marker = rest.split(';', 1)
     else:
-        return requirement.replace(name, name.lower().replace("_", "-"))
+        version_specifiers = rest
+        env_marker = ""
+    if not version_specifiers.strip():
+        version_specifiers = None
+    if not env_marker.strip():
+        env_marker = None
+    return name, version_specifiers, env_marker
+
+
+def condify_name(name, name_replacements=None):
+    """Given a name, replace the package name with its entry, if any, in the dict
+    name_replacements, otherwise make the package name lowercase and replace,
+    underscores with hyphens."""
+    if name_replacements is None:
+        name_replacements = {}
+    return name_replacements.get(name, name.lower().replace("_", "-"))
+
+
+def _version_split(version):
+    # Copied from packaging.specifiers.py, used by condify_version_specifier to extract
+    # prefix used for "compatible" version operator
+    _prefix_regex = re.compile(r"^([0-9]+)((?:a|b|c|rc)[0-9]+)$")
+    result = []
+    for item in version.split("."):
+        match = _prefix_regex.search(item)
+        if match:
+            result.extend(match.groups())
+        else:
+            result.append(item)
+    return result
+
+
+def _get_compatible_prefix(version):
+    # Get everything except the last item in the version, but ignore post and dev
+    # releases and treat the pre-release as its own segment. This logic copied from
+    # packaging.specifiers.Specifier._compare_compatible() in order to be PEP440
+    # compliant.
+    prefix = ".".join(
+        list(
+            itertools.takewhile(
+                lambda x: (not x.startswith("post") and not x.startswith("dev")),
+                _version_split(version),
+            )
+        )[:-1]
+    )
+    # Add the prefix notation to the end of our string
+    return prefix + ".*"
+
+
+def condify_version_specifier(specifier):
+    OPERATORS = [
+        "~=",
+        "==",
+        "!=",
+        "<=",
+        ">=",
+        "<",
+        ">",
+        "===",
+    ]
+    # Remove all whitespace:
+    specifier = specifier.replace(' ', '').replace('\t', '')
+    # Find the operator:
+    for operator in OPERATORS:
+        if specifier.startswith(operator):
+            break
+    else:
+        raise ValueError(f"invalid specifier {specifier}")
+
+    _, version = specifier.split(operator, 1)
+
+    if operator == '===':
+        msg = """The '====' (arbitrary) version operator has no conda equivalent and is
+            not supported"""
+        raise ValueError(' '.join(msg.split()))
+    elif operator == '~=':
+        # Conda doesn't support ~=X.Y, but is equivalent to a >=X.Y,= ==*X.*:
+        return f'>={version},=={_get_compatible_prefix(version)}'
+    else:
+        return specifier
+
+
+def condify_version_specifiers(specifiers):
+    return ','.join(condify_version_specifier(s) for s in specifiers.split(','))
+
+
+def condify_env_marker(env_marker):
+    """convert setuptools env_marker such as sys_platform == 'win32' into their conda
+    equivalents, e.g. 'win'"""
+    # delete quotes and the dot in the Python version, making it an int:
+    for char in '\'".':
+        env_marker = env_marker.replace(char, '')
+    # Replace all runs of whitespace with a single space
+    env_marker = ' '.join(env_marker.split())
+    # Remove whitespace around operators:
+    for operator in ['==', '!=', '<', '>', '<=', '>=']:
+        env_marker = env_marker.replace(' ' + operator, operator)
+        env_marker = env_marker.replace(operator + ' ', operator)
+
+    # Replace Python version variable with conda equivalent:
+    env_marker = env_marker.replace('python_version', 'py')
+
+    # Replace var== and var!= with conda bools and their negations:
+    for platform_var, mapping in PLATFORM_VAR_TRANSLATION.items():
+        for value, conda_bool in mapping.items():
+            env_marker = env_marker.replace(f'{platform_var}=={value}', conda_bool)
+            env_marker = env_marker.replace(
+                f'{platform_var}!={value}', 'not ' + conda_bool
+            )
+    return env_marker
+
+
+def condify_requirement(requirement, name_replacements=None):
+    """Convert a single requirement line in the format of
+    `setuptools.Distribution.install_requires` and
+    `setuptools.Distribution.extras_require` to the format required by conda"""
+    if name_replacements is None:
+        name_replacements = {}
+    name, version_specifiers, env_marker = split_requirement(requirement)
+    name = condify_name(name, name_replacements)
+    if version_specifiers is not None:
+        version_specifiers = condify_version_specifiers(version_specifiers)
+    if env_marker is not None:
+        env_marker = condify_env_marker(env_marker)
+    result = name
+    if version_specifiers is not None:
+        result += f' {version_specifiers}'
+    if env_marker is not None:
+        result += f' # [{env_marker}]'
+    return result
 
 
 def condify_requirements(requires, name_replacements):
     """Convert requirements in the format of `setuptools.Distribution.install_requires`
     and `setuptools.Distribution.extras_require` to the format required by conda"""
-    result = []
-    requires = requires.copy()
-    for line in requires:
-        # Do any name substitutions:
-        parts = line.split(';', 1)
-        # Lower-case the package name:
-        parts[0] = condify_name(parts[0], name_replacements)
-        line = ';'.join(parts)
-        # Put any platform/version selector into conda format:
-        if ';' in line:
-            requirement, qualifier = line.split(';')
-            # delete quotes and the dot in the Python version, making it an int:
-            for char in '\'".':
-                qualifier = qualifier.replace(char, '')
-            line = requirement.strip() + ' # [' + qualifier.strip() + ']'
-        # Replace all runs of whitespace with a single space
-        line = ' '.join(line.split())
-        # Remove whitespace around operators:
-        for operator in ['==', '!=', '<', '>', '<=', '>=']:
-            line = line.replace(' ' + operator, operator)
-            line = line.replace(operator + ' ', operator)
-        if '~=' in line:
-            raise ValueError("setuptools-conda does not support '~= version operator'")
-
-        # Replace Python version variable with conda equivalent:
-        line = line.replace('python_version', 'py')
-
-        # Replace var== and var!= with conda bools and their negations:
-        for platform_var, mapping in PLATFORM_VAR_TRANSLATION.items():
-            for value, conda_bool in mapping.items():
-                line = line.replace(f'{platform_var}=={value}', conda_bool)
-                line = line.replace(f'{platform_var}!={value}', 'not ' + conda_bool)
-        result.append(line)
-
-    return result
+    return [condify_requirement(line, name_replacements) for line in requires]
 
 
 def get_setup_cfg_entry(proj, section, key, is_list=True):

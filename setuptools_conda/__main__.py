@@ -333,7 +333,7 @@ def main():
         get_pyproject_toml_entry,
         get_setup_cfg_entry,
         evaluate_requirements,
-        condify_name,
+        condify_requirement,
         split,
     )
 
@@ -349,7 +349,7 @@ def main():
         build_requires = get_build_requires(proj, additional_args)
         name_differences = get_name_differences(proj, additional_args)
         build_requires = [
-            condify_name(s, name_differences)
+            condify_requirement(s, name_differences)
             for s in evaluate_requirements(build_requires)
         ]
         all_build_requires.extend(build_requires)
@@ -382,7 +382,7 @@ def main():
         name_differences = get_name_differences(proj, additional_args)
         run_requires = get_run_requires(proj, additional_args, project_name)
         run_requires = [
-            condify_name(s, name_differences)
+            condify_requirement(s, name_differences)
             for s in evaluate_requirements(run_requires)
         ]
         all_run_requires.extend(run_requires)
