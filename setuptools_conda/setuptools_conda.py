@@ -118,8 +118,8 @@ def _get_compatible_prefix(version):
     # Get everything except the last item in the version, but ignore post and dev
     # releases and treat the pre-release as its own segment. This logic copied from
     # packaging.specifiers.Specifier._compare_compatible() in order to be PEP440
-    # compliant.
-    prefix = ".".join(
+    # compliant. Don't append ".*" - this is superfluous and deprecated in conda.
+    return ".".join(
         list(
             itertools.takewhile(
                 lambda x: (not x.startswith("post") and not x.startswith("dev")),
@@ -127,8 +127,6 @@ def _get_compatible_prefix(version):
             )
         )[:-1]
     )
-    # Add the prefix notation to the end of our string
-    return prefix + ".*"
 
 
 def condify_version_specifier(specifier):
@@ -158,8 +156,11 @@ def condify_version_specifier(specifier):
             not supported"""
         raise ValueError(' '.join(msg.split()))
     elif operator == '~=':
-        # Conda doesn't support ~=X.Y, but is equivalent to a >=X.Y,= ==*X.*:
+        # Conda doesn't support ~=X.Y, but is equivalent to a >=X.Y,==X:
         return f'>={version},=={_get_compatible_prefix(version)}'
+    elif version.endswith('.*'):
+        # PEP440 '==X.Y.*' is equivalent to conda '==X.Y' 
+        return f'{operator}{version[:-2]}'
     else:
         return specifier
 
