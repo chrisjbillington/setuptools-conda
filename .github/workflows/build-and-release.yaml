@@ -37,10 +37,12 @@ jobs:
           - { os: windows-latest,  python: 3.7,  arch: x64 }
           - { os: windows-latest,  python: 3.6,  arch: x64 }
 
-          - { os: windows-latest,  python: 3.9,  arch: x86 }
-          - { os: windows-latest,  python: 3.8,  arch: x86 }
-          - { os: windows-latest,  python: 3.7,  arch: x86 }
-          - { os: windows-latest,  python: 3.6,  arch: x86 }
+          # TODO: Reactivate when this issue has been resolved:
+          # https://github.com/conda-incubator/setup-miniconda/issues/166
+          #- { os: windows-latest,  python: 3.9,  arch: x86 }
+          #- { os: windows-latest,  python: 3.8,  arch: x86 }
+          #- { os: windows-latest,  python: 3.7,  arch: x86 }
+          #- { os: windows-latest,  python: 3.6,  arch: x86 }
 
     steps:
     - name: Checkout
