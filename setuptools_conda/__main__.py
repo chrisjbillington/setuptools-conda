@@ -341,6 +341,7 @@ def main():
 
     print("\nGetting build requirements...")
     # Get all build requires:
+    channels = []
     for project_path in args.projects:
         proj = Path(project_path)
         build_requires = get_build_requires(proj, additional_args)
@@ -350,9 +351,9 @@ def main():
             for s in evaluate_requirements(build_requires)
         ]
         all_build_requires.extend(build_requires)
-    channels = get_channels(proj, additional_args)
+        channels += get_channels(proj, additional_args)
     chan_args = []
-    for chan in channels:
+    for chan in set(channels):
         chan_args += ['--channel', chan]
 
     # Remove duplicates:
