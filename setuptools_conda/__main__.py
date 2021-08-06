@@ -1,5 +1,6 @@
 from pathlib import Path
 from subprocess import call, check_output
+import shlex
 import sys
 import argparse
 import textwrap
@@ -182,7 +183,7 @@ def main():
     )
 
     def run_conda_cmd(cmd, **kwargs):
-        print('[running]:', ' '.join(cmd))
+        print('[running]:', *[shlex.quote(arg) for arg in cmd])
         # Shell=True is necessary on Windows for calls to conda, otherwise we get
         # mysterious breakage. But shell=True with a list of args totally changes this
         # function on unix so we avoid it:
@@ -191,15 +192,8 @@ def main():
             sys.exit(rc)
         return rc
 
-    def run(cmd, **kwargs):
-        print('[running]:', ' '.join(cmd))
-        rc = call(cmd, **kwargs)
-        if rc:
-            sys.exit(rc)
-        return rc
-
     def get_output(cmd, **kwargs):
-        print('[running]:', ' '.join(cmd))
+        print('[running]:', *[shlex.quote(arg) for arg in cmd])
         return check_output(cmd, shell=WINDOWS, **kwargs).decode('utf8').strip()
 
     def getargvalue(argname, args):
@@ -220,7 +214,7 @@ def main():
                 return arg.split(f'--{argname}=', 1)[1]
 
     def get_project_name(proj):
-        return get_output([sys.executable, 'setup.py', '--name'], cwd=str(proj))
+        return get_output([sys.executable, *setup_py(proj), '--name'], cwd=str(proj))
 
     def get_build_requires(proj, args):
         arg = 'setup-requires'
@@ -253,7 +247,7 @@ def main():
         if requires is not None:
             print("Using run requirements from [dist_conda]/setup_requires")
             return requires
-        get_output([sys.executable, 'setup.py', 'egg_info'], cwd=str(proj))
+        get_output([sys.executable, *setup_py(proj), 'egg_info'], cwd=str(proj))
         requires_file = Path(proj, f'{name.replace("-", "_")}.egg-info', 'requires.txt')
         requires = requires_file.read_text().splitlines()
         # Ignore extras sections:
@@ -336,6 +330,8 @@ def main():
         evaluate_requirements,
         condify_requirement,
         split,
+        setup_py,
+        run,
     )
 
     all_build_requires = []
@@ -370,7 +366,10 @@ def main():
         print("\nBuilding...")
         proj = Path(args.projects[0])
         sys.exit(
-            run([sys.executable, 'setup.py', 'dist_conda'] + setup_args, cwd=str(proj))
+            run(
+                [sys.executable, *setup_py(proj), 'dist_conda'] + setup_args,
+                cwd=str(proj),
+            )
         )
 
     print("\nGetting run requirements...")

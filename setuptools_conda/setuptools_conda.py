@@ -1,7 +1,8 @@
 import sys
 import os
 import shutil
-from subprocess import check_call
+from subprocess import call
+import shlex
 from setuptools import Command
 import json
 from textwrap import dedent
@@ -34,6 +35,38 @@ PLATFORM_VAR_TRANSLATION = {
         'i386': 'x86',
     },
 }
+
+
+# Command line args that can be used in place of "setup.py" for projects that lack a
+# setup.py, runs a minimal setup.py similar to what pip does for projects with no
+# setup.py.
+_SETUP_PY_STUB = [
+    "-c",
+    'import sys, setuptools; sys.argv[0] = __file__ = "setup.py"; setuptools.setup()',
+]
+
+
+def run(cmd, **kwargs):
+    print('[running]:', *[shlex.quote(arg) for arg in cmd])
+    rc = call(cmd, **kwargs)
+    if rc:
+        sys.exit(rc)
+    return rc
+
+
+def setup_py(project_dir):
+    """Returns a list of command line arguments to be used in place of ["setup.py"]. If
+    setup.py exists, then this is just ["setup.py"]. Otherwise, if setup.cfg or
+    pyproject.toml exists, returns args that pass a code snippet to Python with "-c" to
+    execute a minimal setup.py calling setuptools.setup(). If none of pyproject.toml,
+    setup.cfg, or setup.py exists, raises an exception."""
+    if Path(project_dir, 'setup.py').exists():
+        return ['setup.py']
+    elif any(Path(project_dir, s).exists() for s in ['setup.cfg', 'pyproject.toml']):
+        return _SETUP_PY_STUB
+    msg = f"""{project_dir} does not look like a python project directory: contains no
+        setup.py, setup.cfg, or pyproject.toml"""
+    raise RuntimeError(' '.join(msg.split))
 
 
 # Couldn't figure out how to use PyYAML to produce output looking like conda recipes are
@@ -542,19 +575,19 @@ class dist_conda(Command):
                 self.BUILD_DIR,
                 f'{self.NAME}=={self.VERSION}',
             ]
-            check_call(cmd)
+            run(cmd)
 
         else:
             # Run sdist or bdist_wheel to make a source tarball or wheel in the recipe
             # dir:
-            cmd = [sys.executable, 'setup.py']
+            cmd = [sys.executable, *setup_py('.')]
             if self.from_wheel:
                 cmd += ['bdist_wheel']
             else:
                 cmd += ['sdist', '--formats=gztar']
             cmd += ['--dist-dir=' + self.BUILD_DIR]
 
-        check_call(cmd)
+        run(cmd)
 
         if self.from_wheel or self.from_downloaded_wheel:
             dist = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')][0]
@@ -627,7 +660,7 @@ class dist_conda(Command):
 
         environ = os.environ.copy()
         environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
-        check_call(
+        run(
             ['conda-build', '--no-test', self.RECIPE_DIR] + channel_args, env=environ,
         )
 
