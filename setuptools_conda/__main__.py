@@ -174,7 +174,7 @@ def main():
     parser_install_requirements.add_argument(
         action="store",
         dest="projects",
-        nargs="*",
+        nargs="+",
         help=textwrap.dedent(
             """\
                         Project directories to install dependencies for
