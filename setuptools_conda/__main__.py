@@ -5,6 +5,7 @@ import sys
 import argparse
 import textwrap
 import platform
+import tempfile
 
 WINDOWS = platform.system() == 'Windows'
 
@@ -237,7 +238,7 @@ def main():
         print("No build requirements")
         return []
 
-    def get_run_requires(proj, args, name):
+    def get_run_requires(proj, args):
         arg = 'install-requires'
         requires = getargvalue(arg, args)
         if requires is not None:
@@ -247,9 +248,33 @@ def main():
         if requires is not None:
             print("Using run requirements from [dist_conda]/setup_requires")
             return requires
-        get_output([sys.executable, *setup_py(proj), 'egg_info'], cwd=str(proj))
-        requires_file = Path(proj, f'{name.replace("-", "_")}.egg-info', 'requires.txt')
-        requires = requires_file.read_text().splitlines()
+        with tempfile.TemporaryDirectory(prefix='egg-info-tempdir-') as tempdir:
+            get_output(
+                [
+                    sys.executable,
+                    *setup_py(proj),
+                    'egg_info',
+                    '--egg-base',
+                    tempdir,
+                ],
+                cwd=str(proj),
+            )
+            egg_info = [
+                f
+                for f in Path(tempdir).iterdir()
+                if f.name.endswith('.egg-info') and f.is_dir()
+            ]
+            if not egg_info:
+                msg = "no .egg-info directory after running setup.py egg_info"
+                raise RuntimeError(msg)
+            if len(egg_info) > 1:
+                msg = "multiple .egg-info directories after running setup.py egg_info"
+                raise RuntimeError(msg)
+            requires_file = Path(egg_info[0], 'requires.txt')
+            if requires_file.exists():
+                requires = requires_file.read_text().splitlines()
+            else:
+                requires = []
         # Ignore extras sections:
         for i, item in enumerate(requires):
             if not item.strip() or item.startswith('['):
@@ -381,7 +406,7 @@ def main():
         project_name = get_project_name(proj)
         project_names.append(project_name)
         name_differences = get_name_differences(proj, additional_args)
-        run_requires = get_run_requires(proj, additional_args, project_name)
+        run_requires = get_run_requires(proj, additional_args)
         run_requires = [
             condify_requirement(s, name_differences)
             for s in evaluate_requirements(run_requires)
