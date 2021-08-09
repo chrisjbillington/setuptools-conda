@@ -197,12 +197,11 @@ optional arguments:
 ## Help text of `setuptools-conda install-requirements` command
 ```
 $ python setuptools-conda install-requirements -h
-usage: setuptools-conda install-requirements [-h]
-                                             [--setup-requires SETUP_REQUIRES]
+usage: setuptools-conda install-requirements [-h] [--setup-requires SETUP_REQUIRES]
                                              [--install-requires INSTALL_REQUIRES]
                                              [--conda-name-differences CONDA_NAME_DIFFERENCES]
                                              [--channels CHANNELS]
-                                             [projects [projects ...]]
+                                             projects [projects ...]
 
 positional arguments:
   projects              Project directories to install dependencies for
