@@ -21,7 +21,9 @@ def main():
 
     subparsers = parser.add_subparsers(
         dest="command",
-        required=True,
+        # Python 3.6 compat: 'required' only exists in 3.7+
+        **{'required': True} if sys.version_info[:2] >= (3, 7) else {},
+        # required=True,
         help=textwrap.dedent(
             """\
                         Action to perform, either "build" or "install-requirements". For
