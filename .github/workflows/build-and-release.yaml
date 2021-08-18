@@ -10,7 +10,7 @@ on:
 
 defaults:
   run:
-    shell: bash
+    shell: bash -l {0}
 
 env:
   SCM_LOCAL_SCHEME: no-local-version
@@ -64,7 +64,6 @@ jobs:
 
     - name: Conda package (Unix)
       if: runner.os != 'Windows'
-      shell: bash -l {0}
       run: |
         conda install -c cbillington setuptools-conda
         setuptools-conda build .
@@ -92,19 +91,19 @@ jobs:
         name: conda_packages
         path: ./conda_packages
 
-    - name: Install Miniconda and cloud client
-      run: |
-        curl -LO "https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh" 
-        bash Miniconda3-latest-Linux-x86_64.sh -b -p .miniconda
-        source .miniconda/etc/profile.d/conda.sh
-        conda activate
-        conda install anaconda-client
+    - name: Install Miniconda
+      # 2.0.1 until https://github.com/conda-incubator/setup-miniconda/pull/189 merged
+      # and released. Then can change to v2
+      uses: conda-incubator/setup-miniconda@v2.0.1
+      with:
+        auto-update-conda: true
+
+    - name: Install Anaconda cloud client
+      run: conda install anaconda-client
 
     - name: Upload to test label
       if: github.event.ref_type != 'tag'
       run: |
-        source .miniconda/etc/profile.d/conda.sh
-        conda activate
         anaconda \
           --token ${{ secrets.ANACONDA_API_TOKEN }} \
           upload \
@@ -115,8 +114,6 @@ jobs:
     - name: Upload to main label
       if: github.event.ref_type == 'tag'
       run: |
-        source .miniconda/etc/profile.d/conda.sh
-        conda activate
         anaconda \
           --token ${{ secrets.ANACONDA_API_TOKEN }} \
           upload \
