@@ -64,16 +64,12 @@ jobs:
 
     - name: Conda package (Unix)
       if: runner.os != 'Windows'
-      run: |
-        conda install -c cbillington setuptools-conda
-        setuptools-conda build .
+      run: python -m setuptools_conda build .
 
     - name: Conda Package (Windows)
       if: runner.os == 'Windows'
       shell: cmd /C CALL {0}
-      run: |
-        conda install -c cbillington setuptools-conda && ^
-        setuptools-conda build .
+      run: python -m setuptools_conda build .
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
