@@ -7,6 +7,7 @@ on:
   create:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
+  pull_request:
 
 defaults:
   run:
@@ -78,6 +79,7 @@ jobs:
         path: ./conda_packages
 
   upload:
+    if: github.event_name != 'pull_request'
     name: Upload to Anaconda Cloud
     runs-on: ubuntu-latest
     needs: build
