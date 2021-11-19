@@ -66,7 +66,7 @@ def setup_py(project_dir):
         return _SETUP_PY_STUB
     msg = f"""{project_dir} does not look like a python project directory: contains no
         setup.py, setup.cfg, or pyproject.toml"""
-    raise RuntimeError(' '.join(msg.split))
+    raise RuntimeError(' '.join(msg.split()))
 
 
 # Couldn't figure out how to use PyYAML to produce output looking like conda recipes are
