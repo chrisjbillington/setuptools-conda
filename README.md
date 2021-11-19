@@ -321,4 +321,9 @@ Options for 'dist_conda' command:
                             as a wheel. In this case, setuptools-conda will
                             only produce a conda package for the current
                             Python version.
+  --croot                   Value of --croot to pass to conda-build, used as
+                            its build directory. Defaults to
+                            ./conda_build/conda-bld. Setting this to a very
+                            short path can be useful on Windows, where conda-
+                            build sometimes chokes on very long filepaths.
 ```
