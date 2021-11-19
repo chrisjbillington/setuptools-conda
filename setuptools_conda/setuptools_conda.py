@@ -446,11 +446,21 @@ class dist_conda(Command):
                 current Python version."""
             ),
         ),
+        (
+            'croot=',
+            None,
+            dedent(
+                """\
+                Value of --croot to pass to conda-build, used as its build directory.
+                Defaults to ./conda_build/conda-bld. Setting this to a very short path
+                can be useful on Windows, where conda-build sometimes chokes on very
+                long filepaths."""
+            ),
+        ),
     ]
 
     BUILD_DIR = 'conda_build'
     RECIPE_DIR = os.path.join(BUILD_DIR, 'recipe')
-    CONDA_BLD_PATH = os.path.join(BUILD_DIR, 'conda-bld')
     DIST_DIR = 'conda_packages'
 
     def initialize_options(self):
@@ -481,6 +491,7 @@ class dist_conda(Command):
         self.noarch = False
         self.from_wheel = False
         self.from_downloaded_wheel = False
+        self.croot = os.path.join(self.BUILD_DIR, 'conda-bld')
 
     def finalize_options(self):
         if self.license_file is None:
@@ -659,9 +670,10 @@ class dist_conda(Command):
             channel_args += ['-c', chan]
 
         environ = os.environ.copy()
-        environ['CONDA_BLD_PATH'] = os.path.abspath(self.CONDA_BLD_PATH)
         run(
-            ['conda-build', '--no-test', self.RECIPE_DIR] + channel_args, env=environ,
+            ['conda-build', '--no-test', self.RECIPE_DIR, '--croot', self.croot]
+            + channel_args,
+            env=environ,
         )
 
         if self.noarch:
@@ -672,7 +684,7 @@ class dist_conda(Command):
             config = Config()
             platform = config.host_subdir
 
-        repodir = os.path.join(self.CONDA_BLD_PATH, platform)
+        repodir = os.path.join(self.croot, platform)
         with open(os.path.join(repodir, 'repodata.json')) as f:
             pkgs = [os.path.join(repodir, pkg) for pkg in json.load(f)["packages"]]
 
