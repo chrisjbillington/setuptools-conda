@@ -15,8 +15,19 @@ VERSION_SCHEME = {
 }
 
 SITE_PACKAGES = distutils.sysconfig.get_python_lib()
-dist_conda_path = Path(SITE_PACKAGES).parent / 'distutils' / 'command'
-DATA_FILES = [(str(dist_conda_path.relative_to(sys.prefix)), ["dist_conda.py"],)]
+
+# Add the dist_conda command to both stdlib distutils (if it exists - will be removed in
+# Python 3.12) and the one vendored in setuptools, so the command exists regardless of
+# which is in use:
+stdlib_distutils = Path(SITE_PACKAGES).parent / 'distutils' / 'command'
+setuptools_distutils = Path(SITE_PACKAGES) / 'setuptools' / '_distutils' / 'command'
+DATA_FILES = [
+    (str(setuptools_distutils.relative_to(sys.prefix)), ["dist_conda.py"]),
+]
+if stdlib_distutils.exists():
+    DATA_FILES.append(
+        (str(stdlib_distutils.relative_to(sys.prefix)), ["dist_conda.py"])
+    )
 
 setup(
     use_scm_version=VERSION_SCHEME,
