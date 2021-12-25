@@ -1,7 +1,7 @@
 import sys
 import os
 from setuptools import setup
-import distutils.sysconfig
+import sysconfig
 from pathlib import Path
 
 # Normally packages don't have to do this - the dist_conda command should be
@@ -14,7 +14,7 @@ VERSION_SCHEME = {
     "local_scheme": os.getenv("SCM_LOCAL_SCHEME", "node-and-date"),
 }
 
-SITE_PACKAGES = distutils.sysconfig.get_python_lib()
+SITE_PACKAGES = sysconfig.get_path('purelib')
 
 # Add the dist_conda command to both stdlib distutils (if it exists - will be removed in
 # Python 3.12) and the one vendored in setuptools, so the command exists regardless of
