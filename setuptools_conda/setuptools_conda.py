@@ -102,6 +102,21 @@ def split(s, delimiter=','):
     ]
 
 
+def get_all_requires(install_requires, extras_requires):
+    """Given a list of install_requires and a dict of extras_requires, determine which
+    extras_requires are actually environment markers, and return a list of all
+    requirements with any environment markers suffixed after a semicolon as per PEP
+    508."""
+    all_requires = install_requires.copy()
+    for key, requirements in extras_requires.items():
+        if not key.startswith(':'):
+            continue
+        marker = key[1:]
+        for requirement in requirements:
+            all_requires.append(requirement + '; ' + marker)
+    return all_requires
+
+
 def split_requirement(requirement):
     """split a requirements line such as "foo<7,>2; sys_platform == 'win32'" into
     ("foo", "<7,>2", "sys_platform == 'win32'")"""
@@ -527,7 +542,11 @@ class dist_conda(Command):
 
         if self.install_requires is None:
             self.RUN_REQUIRES = condify_requirements(
-                self.distribution.install_requires, self.conda_name_differences,
+                get_all_requires(
+                    self.distribution.install_requires,
+                    self.distribution.extras_require,
+                ),
+                self.conda_name_differences,
             )
         else:
             if isinstance(self.install_requires, str):

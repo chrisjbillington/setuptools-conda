@@ -240,6 +240,32 @@ def main():
         print("No build requirements")
         return []
 
+    def parse_egg_info_requires(egg_info_requires):
+        """Given the contents of an egg-info requires.txt, determine requirements with
+        environmnent markers, and return a list of all requirements with any environment
+        markers suffixed after a semicolon as per PEP 508. Ignore extras-require"""
+        all_requires = []
+
+        env_marker = None
+        extra = False
+        for line in egg_info_requires.splitlines():
+            line = line.strip()
+            if line.startswith('[:'):
+                env_marker = line[2:-1]
+                extra = False
+            elif line.startswith('['):
+                env_marker = None
+                extra = True
+            elif not line:
+                env_marker = None
+                extra = False
+            elif env_marker:
+                all_requires.append(line + '; ' + env_marker)
+            elif not extra:
+                all_requires.append(line) 
+        return all_requires
+
+
     def get_run_requires(proj, args):
         arg = 'install-requires'
         requires = getargvalue(arg, args)
@@ -274,7 +300,7 @@ def main():
                 raise RuntimeError(msg)
             requires_file = Path(egg_info[0], 'requires.txt')
             if requires_file.exists():
-                requires = requires_file.read_text().splitlines()
+                requires = parse_egg_info_requires(requires_file.read_text())
             else:
                 requires = []
         # Ignore extras sections:
