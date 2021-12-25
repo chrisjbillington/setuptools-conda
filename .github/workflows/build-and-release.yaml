@@ -58,9 +58,10 @@ jobs:
       run: git tag -d $(git tag --points-at HEAD)
 
     - name: Install Miniconda
-      # 2.0.1 until https://github.com/conda-incubator/setup-miniconda/pull/189 merged
-      # and released. Then can change to v2
-      uses: conda-incubator/setup-miniconda@v2.0.1
+      # We need https://github.com/conda-incubator/setup-miniconda/pull/189 in order
+      # to be able to install 32-bit miniconda on Windows. Once setup-miniconda 2.1.2
+      # is released with this fix, can change to @v2.
+      uses: conda-incubator/setup-miniconda@1a875d105ac03256664b54c882c8c374ce617ef6
       with:
         auto-update-conda: true
         python-version: ${{ matrix.python }}
