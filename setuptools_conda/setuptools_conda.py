@@ -303,7 +303,7 @@ def evaluate_requirements(entries):
     """Evaluate env markers and return a list of the requirements that are needed in the
     current environment required"""
     requirements = []
-    for entry in entries:
+    for entry in entries or []:
         entry = entry.replace(" ", "")
         if not entry:
             continue
