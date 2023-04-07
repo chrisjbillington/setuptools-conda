@@ -462,20 +462,28 @@ class dist_conda(Command):
             ),
         ),
         (
+            'build-dir=',
+            None,
+            dedent(
+                """\
+                Directory used by setuptools-conda for storing the recipe and other
+                temporary build files. Defaults to ./conda_build"""
+            ),
+        ),
+        (
             'croot=',
             None,
             dedent(
                 """\
                 Value of --croot to pass to conda-build, used as its build directory.
-                Defaults to ./conda_build/conda-bld. Setting this to a very short path
-                can be useful on Windows, where conda-build sometimes chokes on very
-                long filepaths."""
+                Defaults to <build-dir>/conda-bld. Setting this to a very short path can
+                be useful on Windows, where conda-build sometimes chokes on very long
+                filepaths."""
+
             ),
         ),
     ]
 
-    BUILD_DIR = 'conda_build'
-    RECIPE_DIR = os.path.join(BUILD_DIR, 'recipe')
     DIST_DIR = 'conda_packages'
 
     def initialize_options(self):
@@ -506,7 +514,8 @@ class dist_conda(Command):
         self.noarch = False
         self.from_wheel = False
         self.from_downloaded_wheel = False
-        self.croot = os.path.join(self.BUILD_DIR, 'conda-bld')
+        self.build_dir = 'conda_build'
+        self.croot = None
 
     def finalize_options(self):
         if self.license_file is None:
@@ -588,11 +597,15 @@ class dist_conda(Command):
         if not self.pythons:
             self.pythons = [f'{sys.version_info.major}.{sys.version_info.minor}']
 
+        if self.croot is None:
+            self.croot = os.path.join(self.build_dir, 'conda-bld')
+
     def run(self):
         # Clean
-        shutil.rmtree(self.BUILD_DIR, ignore_errors=True)
+        shutil.rmtree(self.build_dir, ignore_errors=True)
+        self.recipe_dir = os.path.join(self.build_dir, 'recipe')
         shutil.rmtree('build', ignore_errors=True)
-        os.makedirs(self.RECIPE_DIR)
+        os.makedirs(self.recipe_dir)
 
         if self.from_downloaded_wheel:
             # Download a wheel:
@@ -602,7 +615,7 @@ class dist_conda(Command):
                 '--only-binary=:all:',
                 '--no-deps',
                 '--dest',
-                self.BUILD_DIR,
+                self.build_dir,
                 f'{self.NAME}=={self.VERSION}',
             ]
             run(cmd)
@@ -615,20 +628,20 @@ class dist_conda(Command):
                 cmd += ['bdist_wheel']
             else:
                 cmd += ['sdist', '--formats=gztar']
-            cmd += ['--dist-dir=' + self.BUILD_DIR]
+            cmd += ['--dist-dir=' + self.build_dir]
 
         run(cmd)
 
         if self.from_wheel or self.from_downloaded_wheel:
-            dist = [p for p in os.listdir(self.BUILD_DIR) if p.endswith('.whl')][0]
+            dist = [p for p in os.listdir(self.build_dir) if p.endswith('.whl')][0]
         else:
             dist = f'{self.distribution.get_name()}-{self.VERSION}.tar.gz'
 
-        with open(os.path.join(self.BUILD_DIR, dist), 'rb') as f:
+        with open(os.path.join(self.build_dir, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
 
         # Build config:
-        build_config_yaml = os.path.join(self.RECIPE_DIR, 'conda_build_config.yaml')
+        build_config_yaml = os.path.join(self.recipe_dir, 'conda_build_config.yaml')
         with open(build_config_yaml, 'w') as f:
             f.write('\n'.join(yaml_lines({'python': self.pythons})))
 
@@ -665,7 +678,7 @@ class dist_conda(Command):
             gui_scripts = self.distribution.entry_points.get('gui_scripts', [])
             package_details['build']['entry_points'] = console_scripts + gui_scripts
         if self.license_file is not None:
-            shutil.copy(self.license_file, self.BUILD_DIR)
+            shutil.copy(self.license_file, self.build_dir)
             package_details['about']['license_file'] = f'../{self.license_file}'
 
         if self.distribution.ext_modules is not None and not self.from_wheel:
@@ -675,12 +688,12 @@ class dist_conda(Command):
             # No need for this section then:
             del package_details['requirements']['build']
 
-        with open(os.path.join(self.RECIPE_DIR, 'meta.yaml'), 'w') as f:
+        with open(os.path.join(self.recipe_dir, 'meta.yaml'), 'w') as f:
             f.write('\n'.join(yaml_lines(package_details)))
 
         # Link scripts:
         for name, contents in self.link_scripts.items():
-            with open(os.path.join(self.RECIPE_DIR, name), 'w') as f:
+            with open(os.path.join(self.recipe_dir, name), 'w') as f:
                 f.write(contents)
 
         # Arguments for extra channels to be searched during build:
@@ -690,7 +703,7 @@ class dist_conda(Command):
 
         environ = os.environ.copy()
         run(
-            ['conda-build', '--no-test', self.RECIPE_DIR, '--croot', self.croot]
+            ['conda-build', '--no-test', self.recipe_dir, '--croot', self.croot]
             + channel_args,
             env=environ,
         )
