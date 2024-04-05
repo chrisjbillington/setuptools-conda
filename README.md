@@ -234,6 +234,9 @@ Options for 'dist_conda' command:
                             `command_options`. Defaults to the current Python
                             version.
   --build-number (-n)       Conda build number. Defaults to zero
+  --license                 Manually specify the type of license for the conda
+                            package. Defaults to the license defined in the 
+                            package metadata.
   --license-file (-l)       License file to include in the conda package.
                             Defaults to any file in the working directory
                             named 'LICENSE', 'COPYING', or 'COPYRIGHT', case

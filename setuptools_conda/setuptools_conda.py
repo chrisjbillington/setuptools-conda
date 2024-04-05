@@ -331,6 +331,16 @@ class dist_conda(Command):
         ),
         ('build-number=', 'n', "Conda build number. Defaults to zero"),
         (
+            'license=',
+            None,
+            dedent(
+                """
+                Manually specify the type of license for the conda package.
+                Defaults to the license defined in the package metadata.
+                """
+            )
+        ),
+        (
             'license-file=',
             'l',
             dedent(
@@ -494,6 +504,7 @@ class dist_conda(Command):
         self.ignore_run_exports = []
         self.channels = None
         self.HOME = self.distribution.get_url()
+        self.license = None
         self.LICENSE = self.distribution.get_license()
         self.SUMMARY = self.distribution.get_description()
 
@@ -518,6 +529,9 @@ class dist_conda(Command):
         self.croot = None
 
     def finalize_options(self):
+        if self.license is not None:
+            # use license over-ride
+            self.LICENSE = self.license
         if self.license_file is None:
             msg = """No file called LICENSE, COPYING or COPYRIGHT with any extension
                 found"""
