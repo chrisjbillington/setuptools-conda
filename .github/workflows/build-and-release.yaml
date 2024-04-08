@@ -35,7 +35,7 @@ jobs:
           - { os: windows-latest,  python: '3.9',  arch: x64 }
           - { os: windows-latest,  python: '3.8',  arch: x64 }
 
-          - { os: windows-latest,  python: '3.11',  arch: x86 }
+          # - { os: windows-latest,  python: '3.11',  arch: x86 } # Not (yet?) available
           - { os: windows-latest,  python: '3.10',  arch: x86 }
           - { os: windows-latest,  python: '3.9',  arch: x86 }
           - { os: windows-latest,  python: '3.8',  arch: x86 }
