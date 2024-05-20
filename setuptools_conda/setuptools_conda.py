@@ -649,7 +649,7 @@ class dist_conda(Command):
         if self.from_wheel or self.from_downloaded_wheel:
             dist = [p for p in os.listdir(self.build_dir) if p.endswith('.whl')][0]
         else:
-            dist = f'{self.distribution.get_name()}-{self.VERSION}.tar.gz'
+            dist = f'{self.distribution.get_fullname()}.tar.gz'
 
         with open(os.path.join(self.build_dir, dist), 'rb') as f:
             sha256 = hashlib.sha256(f.read()).hexdigest()
