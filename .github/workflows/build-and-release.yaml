@@ -110,7 +110,7 @@ jobs:
         run: conda install anaconda-client
 
       - name: Publish to Anaconda test label
-        if: contains(github.ref, '/tags')
+        if: "!contains(github.ref, '/tags')"
         shell: bash -l {0}
         run: |
           anaconda \
