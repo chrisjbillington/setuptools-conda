@@ -17,30 +17,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        include:
-          - { os: ubuntu-latest,   python: '3.12',  arch: x64 }
-          - { os: ubuntu-latest,   python: '3.11',  arch: x64 }
-          - { os: ubuntu-latest,   python: '3.10',  arch: x64 }
-          - { os: ubuntu-latest,   python: '3.9',   arch: x64 }
-          - { os: ubuntu-latest,   python: '3.8',   arch: x64 }
-
-          - { os: macos-13,        python: '3.12',  arch: x64 }
-          - { os: macos-13,        python: '3.11',  arch: x64 }
-          - { os: macos-13,        python: '3.10',  arch: x64 }
-          - { os: macos-13,        python: '3.9',   arch: x64 }
-          - { os: macos-13,        python: '3.8',   arch: x64 }
-
-          - { os: macos-latest,    python: '3.12',  arch: arm64 }
-          - { os: macos-latest,    python: '3.11',  arch: arm64 }
-          - { os: macos-latest,    python: '3.10',  arch: arm64 }
-          - { os: macos-latest,    python: '3.9',   arch: arm64 }
-
-          - { os: windows-latest,  python: '3.12',  arch: x64 }
-          - { os: windows-latest,  python: '3.11',  arch: x64 }
-          - { os: windows-latest,  python: '3.10',  arch: x64 }
-          - { os: windows-latest,  python: '3.9',   arch: x64 }
-          - { os: windows-latest,  python: '3.8',   arch: x64 }
-
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+    env:
+      CONDA_PYTHONS: '3.8,3.9,3.10,3.11,3.12'
 
     if: github.repository == 'chrisjbillington/setuptools-conda'
     steps:
@@ -53,30 +32,23 @@ jobs:
         if: github.event.ref_type == 'push' && contains(github.ref, '/tags')
         run: git tag -d $(git tag --points-at HEAD)
 
-      - name: Install Miniconda
+      - name: Install Miniforge
         uses: conda-incubator/setup-miniconda@v3
         with:
-          auto-update-conda: true
-          architecture: ${{ matrix.arch }}
           miniforge-version: "latest"
+          auto-update-conda: true
           conda-remove-defaults: true
           auto-activate-base: true
           activate-environment: ""
 
-      - name: Conda package (Unix)
-        if: runner.os != 'Windows'
+      - name: Conda package
         shell: bash -l {0}
-        run: python -m setuptools_conda build --pythons=${{ matrix.python }} .
-
-      - name: Conda Package (Windows)
-        if: runner.os == 'Windows'
-        shell: cmd /C CALL {0}
-        run: python -m setuptools_conda build --pythons=${{ matrix.python }} .
+        run: python -m setuptools_conda build --pythons=$CONDA_PYTHONS .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: conda_packages-${{ matrix.os }}-py${{ matrix.python }}-${{ matrix.arch }}
+          name: conda_packages-${{ matrix.os }}
           path: ./conda_packages
 
   release:
@@ -92,11 +64,11 @@ jobs:
           path: ./conda_packages
           merge-multiple: true
 
-      - name: Install Miniconda
+      - name: Install Miniforge
         uses: conda-incubator/setup-miniconda@v3
         with:
-          auto-update-conda: true
           miniforge-version: "latest"
+          auto-update-conda: true
           conda-remove-defaults: true
           auto-activate-base: true
           activate-environment: ""
