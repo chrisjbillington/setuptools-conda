@@ -116,6 +116,7 @@ jobs:
           anaconda \
             --token ${{ secrets.ANACONDA_API_TOKEN }} \
             upload \
+            --skip-existing \
             --user $ANACONDA_USER \
             --label test \
             conda_packages/*/*
@@ -127,5 +128,6 @@ jobs:
           anaconda \
             --token ${{ secrets.ANACONDA_API_TOKEN }} \
             upload \
+            --skip-existing \
             --user $ANACONDA_USER \
             conda_packages/*/*
