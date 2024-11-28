@@ -92,7 +92,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: conda_packages
+          pattern: conda_packages-*
           path: ./conda_packages
           merge-multiple: true
 
