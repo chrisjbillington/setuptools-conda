@@ -12,6 +12,5 @@ requires = [
     "distlib",
     "toml",
     "conda-build",
-    "conda-verify",
     "ripgrep",
 ]
