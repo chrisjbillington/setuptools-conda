@@ -1,7 +1,7 @@
 import sys
 import os
 import shutil
-from subprocess import call
+import subprocess
 import shlex
 from setuptools import Command
 import json
@@ -11,9 +11,13 @@ from pathlib import Path
 import configparser
 import re
 import itertools
+import platform
 
 import toml
 import distlib.markers
+
+
+WINDOWS = platform.system() == 'Windows'
 
 
 if not os.getenv('CONDA_PREFIX'):
@@ -48,10 +52,26 @@ _SETUP_PY_STUB = [
 
 def run(cmd, **kwargs):
     print('[running]:', *[shlex.quote(arg) for arg in cmd])
-    rc = call(cmd, **kwargs)
+    rc = subprocess.call(cmd, **kwargs)
     if rc:
         sys.exit(rc)
     return rc
+
+
+def get_visual_studio_version():
+    """Return installed version of Visual Studio, e.g. '2019' or '2022', or
+    None if none installed or we're not on Windows"""
+    if not WINDOWS:
+        return None
+    vswhere = f"{os.getenv('ProgramFiles(x86)')}\\Microsoft Visual Studio\\Installer\\vswhere.exe"
+    if not Path(vswhere).exists():
+        return None
+    result = subprocess.run([vswhere, '-format', 'json'], check=True, capture_output=True)
+    info = json.loads(result.stdout.decode('utf8'))
+    try:
+        return info[0]['catalog']['productLineVersion']
+    except (IndexError, KeyError):
+        return None
 
 
 def setup_py(project_dir):
@@ -656,8 +676,12 @@ class dist_conda(Command):
 
         # Build config:
         build_config_yaml = os.path.join(self.recipe_dir, 'conda_build_config.yaml')
+        build_config = {'python': self.pythons}
+        vsversion = get_visual_studio_version()
+        if vsversion is not None:
+            build_config['c_compiler'] = build_config['cxx_compiler'] = [f"vs{vsversion}"]
         with open(build_config_yaml, 'w') as f:
-            f.write('\n'.join(yaml_lines({'python': self.pythons})))
+            f.write('\n'.join(yaml_lines(build_config)))
 
         pip_target = dist if (self.from_wheel or self.from_downloaded_wheel) else '.'
 
