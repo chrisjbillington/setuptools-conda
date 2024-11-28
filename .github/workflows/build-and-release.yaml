@@ -4,10 +4,8 @@ on:
   push:
     branches:
       - master
-  create:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'
-  pull_request:
 
 env:
   SCM_LOCAL_SCHEME: no-local-version
@@ -20,67 +18,69 @@ jobs:
     strategy:
       matrix:
         include:
+          - { os: ubuntu-latest,   python: '3.13',  arch: x64 }
           - { os: ubuntu-latest,   python: '3.12',  arch: x64 }
           - { os: ubuntu-latest,   python: '3.11',  arch: x64 }
           - { os: ubuntu-latest,   python: '3.10',  arch: x64 }
-          - { os: ubuntu-latest,   python: '3.9',  arch: x64 }
-          - { os: ubuntu-latest,   python: '3.8',  arch: x64 }
+          - { os: ubuntu-latest,   python: '3.9',   arch: x64 }
+          - { os: ubuntu-latest,   python: '3.8',   arch: x64 }
 
+          - { os: macos-13,        python: '3.13',  arch: x64 }
           - { os: macos-13,        python: '3.12',  arch: x64 }
           - { os: macos-13,        python: '3.11',  arch: x64 }
           - { os: macos-13,        python: '3.10',  arch: x64 }
-          - { os: macos-13,        python: '3.9',  arch: x64 }
-          - { os: macos-13,        python: '3.8',  arch: x64 }
+          - { os: macos-13,        python: '3.9',   arch: x64 }
+          - { os: macos-13,        python: '3.8',   arch: x64 }
 
+          - { os: macos-latest,    python: '3.13',  arch: arm64 }
           - { os: macos-latest,    python: '3.12',  arch: arm64 }
           - { os: macos-latest,    python: '3.11',  arch: arm64 }
           - { os: macos-latest,    python: '3.10',  arch: arm64 }
-          - { os: macos-latest,    python: '3.9',  arch: arm64 }
+          - { os: macos-latest,    python: '3.9',   arch: arm64 }
 
+          - { os: windows-latest,  python: '3.13',  arch: x64 }
           - { os: windows-latest,  python: '3.12',  arch: x64 }
           - { os: windows-latest,  python: '3.11',  arch: x64 }
           - { os: windows-latest,  python: '3.10',  arch: x64 }
-          - { os: windows-latest,  python: '3.9',  arch: x64 }
-          - { os: windows-latest,  python: '3.8',  arch: x64 }
+          - { os: windows-latest,  python: '3.9',   arch: x64 }
+          - { os: windows-latest,  python: '3.8',   arch: x64 }
 
-          # - { os: windows-latest,  python: '3.11',  arch: x86 } # Not (yet?) available
-          - { os: windows-latest,  python: '3.10',  arch: x86 }
-          - { os: windows-latest,  python: '3.9',  arch: x86 }
-          - { os: windows-latest,  python: '3.8',  arch: x86 }
 
-    if: github.repository == 'chrisjbillington/setuptools-conda' && (github.event_name != 'create' || github.event.ref_type != 'branch')
+    if: github.repository == 'chrisjbillington/setuptools-conda'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Ignore Tags
-        if: github.event.ref_type != 'tag'
+        if: github.event.ref_type == 'push' && contains(github.ref, '/tags')
         run: git tag -d $(git tag --points-at HEAD)
 
       - name: Install Miniconda
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: ${{ matrix.python }}
           architecture: ${{ matrix.arch }}
-          miniconda-version: "latest"
+          miniforge-version: "latest"
+          conda-remove-defaults: true
+          auto-activate-base: true
+          activate-environment: ""
 
       - name: Conda package (Unix)
         if: runner.os != 'Windows'
         shell: bash -l {0}
-        run: python -m setuptools_conda build .
+        run: python -m setuptools_conda --pythons=${{ matrix.python }} build .
 
       - name: Conda Package (Windows)
         if: runner.os == 'Windows'
         shell: cmd /C CALL {0}
-        run: python -m setuptools_conda build .
+        run: python -m setuptools_conda --pythons=${{ matrix.python }} build .
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: conda_packages
+          name: conda_packages-${{ matrix.os }}-py${{ matrix.python }}-${{ matrix.arch }}
           path: ./conda_packages
 
   release:
@@ -90,22 +90,27 @@ jobs:
     needs: build
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: conda_packages
           path: ./conda_packages
+          merge-multiple: true
 
       - name: Install Miniconda
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
+          miniforge-version: "latest"
+          conda-remove-defaults: true
+          auto-activate-base: true
+          activate-environment: ""
 
       - name: Install Anaconda cloud client
         shell: bash -l {0}
         run: conda install anaconda-client
 
       - name: Publish to Anaconda test label
-        if: github.event.ref_type != 'tag'
+        if: contains(github.ref, '/tags')
         shell: bash -l {0}
         run: |
           anaconda \
@@ -117,7 +122,7 @@ jobs:
 
       - name: Publish to Anaconda main label
         shell: bash -l {0}
-        if: github.event.ref_type == 'tag'
+        if: contains(github.ref, '/tags')
         run: |
           anaconda \
             --token ${{ secrets.ANACONDA_API_TOKEN }} \
