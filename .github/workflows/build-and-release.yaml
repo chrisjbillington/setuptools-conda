@@ -14,12 +14,7 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
-    env:
-      CONDA_PYTHONS: '3.8,3.9,3.10,3.11,3.12'
+    runs-on: ubuntu-latest
 
     if: github.repository == 'chrisjbillington/setuptools-conda'
     steps:
@@ -43,13 +38,14 @@ jobs:
 
       - name: Conda package
         shell: bash -l {0}
-        run: python -m setuptools_conda build --pythons=$CONDA_PYTHONS .
+        run: python -m setuptools_conda build --noarch .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: conda_packages-${{ matrix.os }}
+          name: conda_packages
           path: ./conda_packages
+          if-no-files-found: error
 
   release:
     if: github.event_name != 'pull_request'

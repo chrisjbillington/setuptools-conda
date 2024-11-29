@@ -94,16 +94,29 @@ setup(
 
 ## build and install `setuptools-conda` from source
 
-`setuptools-conda` can build a conda package of itself. To make a conda package for your
-Python version and platform, in an activated conda environment, run the following:
+`setuptools-conda` can build a conda package of itself. To build and install it, run the
+following in an activated conda environment:
 
 ``` bash
-$ git clone https://github.com/chrisjbillington/setuptools-conda
-$ cd setuptools-conda/
-$ python -m setuptools_conda build .
-$ conda install conda_packages/<your_architecture>/setuptools-conda-<version>-<build>.tar.bz2
+git clone https://github.com/chrisjbillington/setuptools-conda
+cd setuptools-conda/
+python -m setuptools_conda build --noarch .
+conda install conda_build/conda-bld/noarch/setuptools-conda-<version>-<build>.tar.bz2
 ```
 
+## Note on local testing of built packages
+
+`setuptools-conda` copies built conda package files the `conda_packages` directory
+within your project directory for easy uploading. However, for local testing you'll want
+to avoid installing package files from this directory. This is because `conda`
+associates all packages installed from file with the folder they came from, as if that
+folder is a package channel.
+
+To keep conda happy in this respect, for local testing, you'll want to install the
+package file from the directory where `conda-build` originally created it within the `conda_build` directory in your project directory:
+ ```bash
+conda install conda_build/conda-bld/noarch/setuptools-conda-<version>-<build>.tar.bz2
+```
 
 ## Help text of `setuptools-conda`
 
