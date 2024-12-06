@@ -14,3 +14,50 @@ requires = [
     "conda-build",
     "ripgrep",
 ]
+
+[tool.setuptools_scm]
+local_scheme = "no-local-version"
+
+[tool.setuptools.packages]
+find = {namespaces = false}
+
+[project]
+name = "setuptools-conda"
+description = "Build a conda package from a setuptools project"
+authors = [
+    {name = "Chris Billington", email = "chrisjbillington@gmail.com"},
+]
+keywords = ["build", "setuptools", "conda"]
+license = {file = 'LICENSE.txt'}
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3 :: Only",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "setuptools",
+    "wheel",
+    "setuptools_scm",
+    "distlib",
+    "toml",
+    "conda-build",
+    "ripgrep",
+]
+dynamic = ["version"]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.urls]
+Homepage = "https://github.com/chrisjbillington/setuptools-conda"
+Documentation = "https://github.com/chrisjbillington/setuptools-conda"
+Repository = "https://github.com/chrisjbillington/setuptools-conda"
+Downloads = "https://github.com/chrisjbillington/setuptools-conda"
+Tracker = "https://github.com/chrisjbillington/setuptools-conda/issues"
+
+[project.scripts]
+setuptools-conda = "setuptools_conda.__main__:main"
+
+[tool.setuptools_conda]
+noarch = true

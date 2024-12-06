@@ -71,8 +71,18 @@ the `[dist_conda]` section:
 
 ```ini
 [dist_conda]
+conda_name_differences = PyQt5:pyqt
 pythons = 3.6, 3.7
 noarch = True
+```
+
+or in `pyproject.toml` in the `[tool.setuptools_conda]` section:
+
+```toml
+[tool.setuptools_conda]
+conda_name_differences = {PyQt5 = "pyqt"}
+pythons = ["3.12", "3.13"]
+noarch = true
 ```
 
 They can also be set if you need to with the command_options argument in `setup.py`:
@@ -171,13 +181,16 @@ positional arguments:
                         stopping on the first found:
 
                         1. --install-requires passed in on the command line
+                        2. [tool.setuptools_conda]/install_requires in the project's
+                           pyproject.toml
                         2. [dist_conda]/install_requires in the project's setup.cfg
                         4. [options]/install_requires in the project's setup.cfg or
                            setup.py (obtained via 'python setup.py egg_info')
 
                         any any PyPI:conda name differences can be passed in with the
                         '--conda-name-differences' argument or configured in
-                        [dist_conda]/conda_name_differences in setup.cfg.
+                        pyproject.toml [tool.setuptools_conda]/conda_name_differences or
+                        setup.cfg [dist_conda]/conda_name_differences.
 
                         Any runtime requirements that themselves are in the list of
                         projects to install requirements for will not be installed. This
@@ -186,7 +199,7 @@ positional arguments:
                         would not want to install those projects normally in addition to
                         in editable mode.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
 ```
 

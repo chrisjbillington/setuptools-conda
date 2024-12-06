@@ -306,7 +306,7 @@ def get_setup_cfg_entry(proj, section, key, is_list=True):
 
 
 def get_pyproject_toml_entry(proj, *keys):
-    """Return [build-system] requires as read from proj/pyproject.toml, if any"""
+    """Return value for nested keys in proj/pyproject.toml, if any, else None"""
     pyproject_toml = Path(proj, 'pyproject.toml')
     if not pyproject_toml.exists():
         return None
@@ -345,7 +345,8 @@ class dist_conda(Command):
             dedent(
                 """\
                 Minor Python versions to build for, as a comma-separated list e.g. '2.7,
-                3.6'. Also accepts a list of strings if passed into `setup()` via
+                3.6'. Also accepts a list of strings if specified in
+                `pyproject.toml/[tool.setuptools_conda]` or passed into `setup()` via
                 `command_options`. Defaults to the current Python version."""
             ),
         ),
@@ -393,10 +394,11 @@ class dist_conda(Command):
                 """\
                 Runtime dependencies, as a comma-separated list in standard setuptools
                 format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Also accepts
-                a list of strings if passed into `setup()` via `command_options`.
-                Defaults to the `install_requires` argument to `setup()`, and can
-                therefore be omitted if the runtime dependencies when running in conda
-                do not differ."""
+                a list of strings if specified in
+                `pyproject.toml/[tool.setuptools_conda]` or passed into `setup()` via
+                `command_options`. Defaults to the `install_requires` argument to
+                `setup()`, and can therefore be omitted if the runtime dependencies when
+                running in conda do not differ."""
             ),
         ),
         (
@@ -411,7 +413,8 @@ class dist_conda(Command):
                 libraries that were linked against at build-time - but this can be
                 undesirable when it creates a brittle dependency on a specific version
                 of a library which is not actually required at runtime. Also accepts a
-                list of strings if passed into `setup()` via `command_options`."""
+                list of strings if specified in `pyproject.toml/[tool.setuptools_conda]`
+                or passed into `setup()` via `command_options`."""
             ),
         ),
         (
@@ -420,9 +423,9 @@ class dist_conda(Command):
             dedent(
                 """\
                 Additional channels to search for build requirements during the build,
-                as a comma-separated list, or a list of strings if passed in via
-                setup.py. Defaults to [tools.setuptools-conda]/channels listed in a
-                `pyproject.toml` file, if any."""
+                as a comma-separated list, or a list of strings if specified in
+                `pyproject.toml/[tool.setuptools_conda]` or passed in via
+                setup.py."""
             ),
         ),
         (
@@ -433,11 +436,12 @@ class dist_conda(Command):
                 Mapping of PyPI package names to conda package names, as a
                 comma-separated list of colon-separated names, e.g.
                 'PyQt5:pyqt,beautifulsoup4:beautiful-soup'. Also accepts a dict if
-                passed into `setup()` via `command_options`. Conda packages usually
-                share a name with their PyPI equivalents, but use this option to specify
-                the mapping when they differ. If the only difference is lowercasing or
-                conversion of underscores into hyphens, no entry is needed - these
-                changes are made automatically."""
+                specified in `pyproject.toml/[tool.setuptools_conda]` or passed into
+                `setup()` via `command_options`. Conda packages usually share a name
+                with their PyPI equivalents, but use this option to specify the mapping
+                when they differ. If the only difference is lowercasing or conversion of
+                underscores into hyphens, no entry is needed - these changes are made
+                automatically."""
             ),
         ),
         (
@@ -447,9 +451,9 @@ class dist_conda(Command):
                 """\
                 Comma-separated list of link scripts to include, such as post-link.sh,
                 pre-unlink.bat etc. These will be placed in the recipe directory before
-                building. If passed to `setup()` via `command_options`, this shound
-                instead be a dictionary mapping link script filenames to their
-                contents."""
+                building. If specified in `pyproject.toml/[tool.setuptools_conda]` or
+                passed to `setup()` via `command_options`, this shound instead be a
+                dictionary mapping link script filenames to their contents."""
             ),
         ),
         (
@@ -517,36 +521,44 @@ class dist_conda(Command):
     DIST_DIR = 'conda_packages'
 
     def initialize_options(self):
+
+        # Initialise options from any present in pyproject.toml [tool.setuptools_conda]
+        pyproject_toml_options = get_pyproject_toml_entry('.', "tool", "setuptools_conda")
+        if pyproject_toml_options is None:
+            pyproject_toml_options = {}
+
         self.VERSION = self.distribution.get_version()
         self.NAME = condify_name(self.distribution.get_name())
-        self.setup_requires = None
-        self.install_requires = None
-        self.ignore_run_exports = []
-        self.channels = None
+        self.setup_requires = pyproject_toml_options.get('setup_requires')
+        self.install_requires = pyproject_toml_options.get('install_requires')
+        self.ignore_run_exports = pyproject_toml_options.get('ignore_run_exports', [])
+        self.channels = pyproject_toml_options.get('channels')
         self.HOME = self.distribution.get_url()
-        self.license = None
+        self.license = pyproject_toml_options.get('license')
         self.LICENSE = self.distribution.get_license()
         self.SUMMARY = self.distribution.get_description()
 
-        self.license_file = None
-        for filename in os.listdir('.'):
-            if os.path.splitext(filename.upper())[0] in [
-                'LICENSE',
-                'COPYING',
-                'COPYRIGHT',
-            ]:
-                self.license_file = filename
-                break
-        self.pythons = []
-        self.build_number = 0
-        self.conda_name_differences = {}
-        self.build_string = None
-        self.link_scripts = {}
-        self.noarch = False
-        self.from_wheel = False
-        self.from_downloaded_wheel = False
-        self.build_dir = 'conda_build'
-        self.croot = None
+        self.license_file = pyproject_toml_options.get('license_file')
+        if self.license_file is None:
+            for filename in os.listdir('.'):
+                if os.path.splitext(filename.upper())[0] in [
+                    'LICENSE',
+                    'COPYING',
+                    'COPYRIGHT',
+                ]:
+                    self.license_file = filename
+                    break
+
+        self.pythons = pyproject_toml_options.get('pythons', [])
+        self.build_number = pyproject_toml_options.get('build_number', 0)
+        self.conda_name_differences = pyproject_toml_options.get('conda_name_differences', {})
+        self.build_string = pyproject_toml_options.get('build_string')
+        self.link_scripts = pyproject_toml_options.get('link_scripts', {})
+        self.noarch = pyproject_toml_options.get('noarch', False)
+        self.from_wheel = pyproject_toml_options.get('from_wheel', False)
+        self.from_downloaded_wheel = pyproject_toml_options.get('from_downloaded_wheel', False)
+        self.build_dir = pyproject_toml_options.get('build_dir', 'conda_build')
+        self.croot = pyproject_toml_options.get('croot')
 
     def finalize_options(self):
         if self.license is not None:

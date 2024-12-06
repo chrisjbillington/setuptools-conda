@@ -108,13 +108,16 @@ def main():
                         stopping on the first found:
 
                         1. --install-requires passed in on the command line
+                        2. [tool.setuptools_conda]/install_requires in the project's
+                           pyproject.toml
                         2. [dist_conda]/install_requires in the project's setup.cfg
                         4. [options]/install_requires in the project's setup.cfg or
                            setup.py (obtained via 'python setup.py egg_info')
 
                         any any PyPI:conda name differences can be passed in with the
                         '--conda-name-differences' argument or configured in
-                        [dist_conda]/conda_name_differences in setup.cfg.
+                        pyproject.toml [tool.setuptools_conda]/conda_name_differences or
+                        setup.cfg [dist_conda]/conda_name_differences.
 
                         Any runtime requirements that themselves are in the list of
                         projects to install requirements for will not be installed. This
@@ -227,11 +230,11 @@ def main():
             return split(requires)
         requires = get_setup_cfg_entry(proj, "dist_conda", "setup_requires")
         if requires is not None:
-            print("Using build requirements from [dist_conda]/setup_requires")
+            print("Using build requirements from setup.cfg [dist_conda]/setup_requires")
             return requires
         requires = get_pyproject_toml_entry(proj, 'build-system', 'requires')
         if requires is not None:
-            print("Using build requirements from [build-system]/requires")
+            print("Using build requirements from pyproject.toml [build-system]/requires")
             return requires
         requires = get_setup_cfg_entry(proj, "options", "setup_requires")
         if requires is not None:
@@ -320,9 +323,15 @@ def main():
         if chans is not None:
             print(f"Using extra channels from --{arg} command line argument")
             return split(chans)
+        channels = get_pyproject_toml_entry(proj, "tool", "setuptools_conda", "channels")
+        if channels is not None:
+            print(
+                "Using extra channels from pyproject.toml [tool.setuptools_conda]/channels"
+            )
+            return channels
         channels = get_setup_cfg_entry(proj, "dist_conda", "channels")
         if channels is not None:
-            print("Using extra channels from [dist_conda]/channels")
+            print("Using extra channels from setup.cfg [dist_conda]/channels")
             return channels
         print("No extra channels")
         return []
@@ -333,11 +342,21 @@ def main():
         if name_differences is not None:
             print(f"Using name differences from --{arg} command line argument")
             return dict(split(item, ':') for item in split(name_differences))
+        name_differences = get_pyproject_toml_entry(
+            proj, "tool", "setuptools_conda", "conda_name_differences"
+        )
+        if name_differences is not None:
+            print(
+                "Using name differences from pyproject.toml [tool.setuptools_conda]/conda_name_differences"
+            )
+            return name_differences
         name_differences = get_setup_cfg_entry(
             proj, "dist_conda", "conda_name_differences"
         )
         if name_differences is not None:
-            print("Using extra channels from [tools.setuptools-conda]/channels")
+            print(
+                "Using name differences from setup.cfg [dist_conda]/conda_name_differences"
+            )
             return dict(split(item, ':') for item in name_differences)
         print("No name differences")
         return {}
