@@ -768,7 +768,9 @@ class dist_conda(Command):
 
         repodir = os.path.join(self.croot, platform)
         with open(os.path.join(repodir, 'repodata.json')) as f:
-            pkgs = [os.path.join(repodir, pkg) for pkg in json.load(f)["packages"]]
+            repodata = json.load(f)
+            pkgs = [os.path.join(repodir, pkg) for pkg in repodata.get("packages", {})]
+            pkgs += [os.path.join(repodir, pkg) for pkg in repodata.get("packages.conda", {})]
 
         if not os.path.exists(self.DIST_DIR):
             os.mkdir(self.DIST_DIR)
