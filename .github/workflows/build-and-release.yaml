@@ -33,7 +33,7 @@ jobs:
           miniforge-version: "latest"
           auto-update-conda: true
           conda-remove-defaults: true
-          auto-activate-base: true
+          auto-activate: true
           activate-environment: ""
 
       - name: Conda package
@@ -66,7 +66,7 @@ jobs:
           miniforge-version: "latest"
           auto-update-conda: true
           conda-remove-defaults: true
-          auto-activate-base: true
+          auto-activate: true
           activate-environment: ""
 
       - name: Install Anaconda cloud client
