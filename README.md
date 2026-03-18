@@ -256,13 +256,14 @@ $ python setup.py dist_conda -h
 Options for 'dist_conda' command:
   --pythons                 Minor Python versions to build for, as a comma-
                             separated list e.g. '2.7, 3.6'. Also accepts a
-                            list of strings if passed into `setup()` via
-                            `command_options`. Defaults to the current Python
-                            version.
+                            list of strings if specified in
+                            `pyproject.toml/[tool.setuptools_conda]` or passed
+                            into `setup()` via `command_options`. Defaults to
+                            the current Python version.
   --build-number (-n)       Conda build number. Defaults to zero
-  --license                 Manually specify the type of license for the conda
-                            package. Defaults to the license defined in the 
-                            package metadata.
+  --license                  Manually specify the type of license for the
+                            conda package. Defaults to the license defined in
+                            the package metadata.
   --license-file (-l)       License file to include in the conda package.
                             Defaults to any file in the working directory
                             named 'LICENSE', 'COPYING', or 'COPYRIGHT', case
@@ -284,11 +285,12 @@ Options for 'dist_conda' command:
   --install-requires        Runtime dependencies, as a comma-separated list in
                             standard setuptools format, e.g. 'foo >= 2.0;
                             sys_platform=="win32",bar==2.3'. Also accepts a
-                            list of strings if passed into `setup()` via
-                            `command_options`. Defaults to the
-                            `install_requires` argument to `setup()`, and can
-                            therefore be omitted if the runtime dependencies
-                            when running in conda do not differ.
+                            list of strings if specified in
+                            `pyproject.toml/[tool.setuptools_conda]` or passed
+                            into `setup()` via `command_options`. Defaults to
+                            the `install_requires` argument to `setup()`, and
+                            can therefore be omitted if the runtime
+                            dependencies when running in conda do not differ.
   --ignore-run-exports      Comma-separated list of conda packages that should
                             *not* be considered runtime dependencies, even if
                             they are declared in run_exports of a build
@@ -299,32 +301,35 @@ Options for 'dist_conda' command:
                             undesirable when it creates a brittle dependency
                             on a specific version of a library which is not
                             actually required at runtime. Also accepts a list
-                            of strings if passed into `setup()` via
-                            `command_options`.
+                            of strings if specified in
+                            `pyproject.toml/[tool.setuptools_conda]` or passed
+                            into `setup()` via `command_options`.
   --channels (-c)           Additional channels to search for build
                             requirements during the build, as a comma-
-                            separated list, or a list of strings if passed in
-                            via setup.py. Defaults to [tools.setuptools-
-                            conda]/channels listed in a `pyproject.toml` file,
-                            if any.
+                            separated list, or a list of strings if specified
+                            in `pyproject.toml/[tool.setuptools_conda]` or
+                            passed in via setup.py.
   --conda-name-differences  Mapping of PyPI package names to conda package
                             names, as a comma-separated list of colon-
                             separated names, e.g.
                             'PyQt5:pyqt,beautifulsoup4:beautiful-soup'. Also
-                            accepts a dict if passed into `setup()` via
-                            `command_options`. Conda packages usually share a
-                            name with their PyPI equivalents, but use this
-                            option to specify the mapping when they differ. If
-                            the only difference is lowercasing or conversion
-                            of underscores into hyphens, no entry is needed -
-                            these changes are made automatically.
+                            accepts a dict if specified in
+                            `pyproject.toml/[tool.setuptools_conda]` or passed
+                            into `setup()` via `command_options`. Conda
+                            packages usually share a name with their PyPI
+                            equivalents, but use this option to specify the
+                            mapping when they differ. If the only difference
+                            is lowercasing or conversion of underscores into
+                            hyphens, no entry is needed - these changes are
+                            made automatically.
   --link-scripts            Comma-separated list of link scripts to include,
                             such as post-link.sh, pre-unlink.bat etc. These
                             will be placed in the recipe directory before
-                            building. If passed to `setup()` via
-                            `command_options`, this shound instead be a
-                            dictionary mapping link script filenames to their
-                            contents.
+                            building. If specified in
+                            `pyproject.toml/[tool.setuptools_conda]` or passed
+                            to `setup()` via `command_options`, this shound
+                            instead be a dictionary mapping link script
+                            filenames to their contents.
   --noarch                  Build a platform-independent package. Only set
                             this if your dependencies are the same on all
                             platforms and Python versions you support, and you
@@ -348,8 +353,10 @@ Options for 'dist_conda' command:
                             building at all. Requires that the exact version
                             as understood by setuptools is availalble on PyPI
                             as a wheel. In this case, setuptools-conda will
-                            only produce a conda package for the current
-                            Python version.
+                            only produce a conda package for a single Python
+                            version, which can be specified with a single
+                            version passed to --pythons, or defaults to the
+                            current Python version
   --build-dir               Directory used by setuptools-conda for storing the
                             recipe and other temporary build files. Defaults
                             to ./conda_build

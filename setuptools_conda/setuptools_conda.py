@@ -491,8 +491,9 @@ class dist_conda(Command):
                 requirements, this can be a way to essentially repackage an existing
                 wheel without having to any building at all. Requires that the exact
                 version as understood by setuptools is availalble on PyPI as a wheel. In
-                this case, setuptools-conda will only produce a conda package for the
-                current Python version."""
+                this case, setuptools-conda will only produce a conda package for a
+                single Python version, which can be specified with a single version
+                passed to --pythons, or defaults to the current Python version"""
             ),
         ),
         (
@@ -635,10 +636,15 @@ class dist_conda(Command):
             msg = """Can't specify `pythons` and `noarch` simultaneously"""
             raise ValueError(msg)
 
-        if self.pythons and (self.from_wheel or self.from_downloaded_wheel):
-            msg = """Can't specify `pythons` if `from_wheel or `from_downloaded_wheel`
-                is set"""
-            raise ValueError(' '.join(msg.split()))
+        if len(self.pythons) > 1 and self.from_downloaded_wheel:
+            msg = (
+                """Can't specify multiple `pythons` if `from_downloaded_wheel` is set"""
+            )
+            raise ValueError(msg)
+
+        if self.pythons and self.from_wheel:
+            msg = """Can't specify `pythons` if `from_wheel` is set"""
+            raise ValueError(msg)
 
         if not self.pythons:
             self.pythons = [f'{sys.version_info.major}.{sys.version_info.minor}']
@@ -659,6 +665,8 @@ class dist_conda(Command):
                 'pip',
                 'download',
                 '--only-binary=:all:',
+                '--python-version',
+                self.pythons[0],
                 '--no-deps',
                 '--dest',
                 self.build_dir,

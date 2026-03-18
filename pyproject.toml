@@ -29,9 +29,9 @@ authors = [
     {name = "Chris Billington", email = "chrisjbillington@gmail.com"},
 ]
 keywords = ["build", "setuptools", "conda"]
-license = {file = 'LICENSE.txt'}
+license = "BSD-2-Clause"
+license-files = ["LICENSE"]
 classifiers = [
-    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3 :: Only",
 ]
 requires-python = ">=3.8"
