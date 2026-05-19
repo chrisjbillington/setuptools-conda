@@ -121,6 +121,12 @@ def split(s, delimiter=','):
         item.strip() for item in s.replace(delimiter, '\n').splitlines() if item.strip()
     ]
 
+def split_requirements(s):
+    """Split a comma-separated or newline-separated list of requirements, allowing for
+    stacked requirements such as `numpy >1.24,<=2.0.0` that contain a comma. Commas for
+    which the next non-whitespace character is one of `<>=!~` are not split on.
+    """
+    return [item.strip() for item in re.split(r'\n|,(?!\s*[<>=!~])', s) if item.strip()]
 
 def get_all_requires(install_requires, extras_requires):
     """Given a list of install_requires and a dict of extras_requires, determine which
@@ -379,12 +385,15 @@ class dist_conda(Command):
             dedent(
                 """\
                 Build dependencies, as a comma-separated list in standard setuptools
-                format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Also accepts
-                a list of strings if passed into `setup()` via `command_options`.
-                Defaults to any requirements listed in a `pyproject.toml` under
-                [build-system]/requires, or if none, any requirements listed in the
-                `setup_requires` setuptools configuration option. Can be be omitted if
-                the build dependencies when building for conda do not differ."""
+                format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Stacked
+                version specifiers, e.g. 'numpy >1.24,<=2.0.0' are supported, commas
+                within them will not be treated as delimiters of a comma-separated list.
+                Also accepts a list of strings if passed into `setup()` via
+                `command_options`. Defaults to any requirements listed in a
+                `pyproject.toml` under [build-system]/requires, or if none, any
+                requirements listed in the `setup_requires` setuptools configuration
+                option. Can be be omitted if the build dependencies when building for
+                conda do not differ."""
             ),
         ),
         (
@@ -393,8 +402,10 @@ class dist_conda(Command):
             dedent(
                 """\
                 Runtime dependencies, as a comma-separated list in standard setuptools
-                format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Also accepts
-                a list of strings if specified in
+                format, e.g. 'foo >= 2.0; sys_platform=="win32",bar==2.3'. Stacked
+                version specifiers, e.g. 'numpy >1.24,<=2.0.0' are supported, commas
+                within them will not be treated as delimiters of a comma-separated list.
+                Also accepts a list of strings if specified in
                 `pyproject.toml/[tool.setuptools_conda]` or passed into `setup()` via
                 `command_options`. Defaults to the `install_requires` argument to
                 `setup()`, and can therefore be omitted if the runtime dependencies when
@@ -591,7 +602,7 @@ class dist_conda(Command):
             )
         else:
             if isinstance(self.setup_requires, str):
-                self.setup_requires = split(self.setup_requires)
+                self.setup_requires = split_requirements(self.setup_requires)
             self.SETUP_REQUIRES = condify_requirements(
                 self.setup_requires, self.conda_name_differences
             )
@@ -606,7 +617,7 @@ class dist_conda(Command):
             )
         else:
             if isinstance(self.install_requires, str):
-                self.install_requires = split(self.install_requires)
+                self.install_requires = split_requirements(self.install_requires)
             self.RUN_REQUIRES = condify_requirements(
                 self.install_requires, self.conda_name_differences
             )
