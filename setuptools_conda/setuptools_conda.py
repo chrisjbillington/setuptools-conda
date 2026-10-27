@@ -456,6 +456,23 @@ class dist_conda(Command):
             ),
         ),
         (
+            'conda-build-config=',
+            None,
+            dedent(
+                """\
+                Variant configuration for conda-build, such as compiler versions, as a
+                comma-separated list of colon-separated keys and values, e.g.
+                'c_compiler_version:14; sys_platform=="linux",cxx_compiler_version:14;
+                sys_platform=="linux"'. A value may have an environment marker, and is
+                used only if the marker is true on the build platform. Also accepts a
+                dict mapping each key to a value or a list of values if specified in
+                `pyproject.toml/[tool.setuptools_conda]` or passed into `setup()` via
+                `command_options`. The entries are added to the
+                conda_build_config.yaml of the recipe. Use `pythons` to set the Python
+                versions."""
+            ),
+        ),
+        (
             'link-scripts=',
             None,
             dedent(
@@ -566,6 +583,7 @@ class dist_conda(Command):
         self.conda_name_differences = pyproject_toml_options.get('conda_name_differences', {})
         self.build_string = pyproject_toml_options.get('build_string')
         self.link_scripts = pyproject_toml_options.get('link_scripts', {})
+        self.conda_build_config = pyproject_toml_options.get('conda_build_config', {})
         self.noarch = pyproject_toml_options.get('noarch', False)
         self.from_wheel = pyproject_toml_options.get('from_wheel', False)
         self.from_downloaded_wheel = pyproject_toml_options.get('from_downloaded_wheel', False)
@@ -633,6 +651,24 @@ class dist_conda(Command):
                 self.channels = []
         elif isinstance(self.channels, str):
             self.channels = split(self.channels)
+
+        if isinstance(self.conda_build_config, str):
+            conda_build_config = {}
+            for item in split(self.conda_build_config):
+                key, value = item.split(':', 1)
+                conda_build_config.setdefault(key.strip(), []).append(value)
+            self.conda_build_config = conda_build_config
+        conda_build_config = {}
+        for key, values in self.conda_build_config.items():
+            if key == 'python':
+                msg = """Set Python versions with `pythons`, not `conda_build_config`"""
+                raise ValueError(msg)
+            if isinstance(values, str):
+                values = [values]
+            values = evaluate_requirements(values)
+            if values:
+                conda_build_config[key] = values
+        self.conda_build_config = conda_build_config
 
         if isinstance(self.link_scripts, str):
             link_scripts = {}
@@ -711,6 +747,7 @@ class dist_conda(Command):
         vsversion = get_visual_studio_version()
         if vsversion is not None:
             build_config['c_compiler'] = build_config['cxx_compiler'] = [f"vs{vsversion}"]
+        build_config.update(self.conda_build_config)
         with open(build_config_yaml, 'w') as f:
             f.write('\n'.join(yaml_lines(build_config)))
 

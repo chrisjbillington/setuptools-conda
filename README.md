@@ -322,6 +322,20 @@ Options for 'dist_conda' command:
                             is lowercasing or conversion of underscores into
                             hyphens, no entry is needed - these changes are
                             made automatically.
+  --conda-build-config      Variant configuration for conda-build, such as
+                            compiler versions, as a comma-separated list of
+                            colon-separated keys and values, e.g.
+                            'c_compiler_version:14;
+                            sys_platform=="linux",cxx_compiler_version:14;
+                            sys_platform=="linux"'. A value may have an
+                            environment marker, and is used only if the marker
+                            is true on the build platform. Also accepts a dict
+                            mapping each key to a value or a list of values if
+                            specified in `pyproject.toml/[tool.setuptools_conda]`
+                            or passed into `setup()` via `command_options`. The
+                            entries are added to the conda_build_config.yaml of
+                            the recipe. Use `pythons` to set the Python
+                            versions.
   --link-scripts            Comma-separated list of link scripts to include,
                             such as post-link.sh, pre-unlink.bat etc. These
                             will be placed in the recipe directory before
