@@ -753,6 +753,13 @@ class dist_conda(Command):
 
         pip_target = dist if (self.from_wheel or self.from_downloaded_wheel) else '.'
 
+        python_requirement = 'python'
+        if self.distribution.python_requires:
+            python_requires = condify_version_specifiers(
+                str(self.distribution.python_requires)
+            )
+            python_requirement += f' {python_requires}'
+
         # Recipe:
         package_details = {
             'package': {'name': self.NAME, 'version': self.VERSION,},
@@ -764,7 +771,7 @@ class dist_conda(Command):
             'requirements': {
                 'build': [],
                 'host': ['python', 'pip', 'wheel', 'setuptools'] + self.SETUP_REQUIRES,
-                'run': ['python'] + self.RUN_REQUIRES,
+                'run': [python_requirement] + self.RUN_REQUIRES,
             },
             'about': {
                 'home': self.HOME,
